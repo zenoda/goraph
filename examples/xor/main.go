@@ -17,16 +17,16 @@ func main() {
 	var output Node
 	output = Multi(input, w1)
 	output = Add(output, Multi(NewConstVariable(4, 1, 1), b1))
-	output = Tanh(output)
+	output = Sigmoid(output)
 
 	output = Multi(output, w2)
 	output = Add(output, Multi(NewConstVariable(4, 1, 1), b2))
-	output = Tanh(output)
+	output = Sigmoid(output)
 
 	var loss Node
 	loss = MSELoss(output, target)
 	optimizer := NewSGDOptimizer([]*VariableNode{w1, b1, w2, b2}, 0.1, 0.99)
-	for range 600 {
+	for range 2000 {
 		outputValue := output.Forward()
 		fmt.Println(outputValue)
 		lossValue := loss.Forward()
