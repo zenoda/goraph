@@ -25,7 +25,7 @@ func NewSGDOptimizer(parameters []*VariableNode, learningRate, momentum float64)
 }
 func (opt *SGDOptimizer) Step() {
 	for i, p := range opt.Parameters {
-		opt.Velocity[i] = opt.Velocity[i].Scale(opt.Momentum).Add(p.Gradient)
+		opt.Velocity[i] = opt.Velocity[i].Scale(opt.Momentum).Add(p.Gradient.Scale(1 - opt.Momentum))
 		p.Value = p.Value.Sub(opt.Velocity[i].Scale(opt.LearningRate))
 	}
 }
