@@ -106,3 +106,25 @@ func (m *Matrix) Scale(rate float64) *Matrix {
 	}
 	return NewMatrix(m.Rows, m.Cols, data)
 }
+
+func (m *Matrix) HConcat(other *Matrix) (result *Matrix) {
+	if m.Rows != other.Rows {
+		panic("Matrix rows do not match")
+	}
+	var data []float64
+	for i := range m.Rows {
+		data = append(data, m.Data[i*m.Cols:i*m.Cols+m.Cols]...)
+		data = append(data, other.Data[i*other.Cols:i*other.Cols+other.Cols]...)
+	}
+	return NewMatrix(m.Rows, m.Cols+other.Cols, data)
+}
+
+func (m *Matrix) VConcat(other *Matrix) (result *Matrix) {
+	if m.Cols != other.Cols {
+		panic("Matrix cols do not match")
+	}
+	var data []float64
+	data = append(data, m.Data...)
+	data = append(data, other.Data...)
+	return NewMatrix(m.Rows+other.Rows, m.Cols, data)
+}

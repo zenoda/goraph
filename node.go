@@ -123,6 +123,48 @@ func (m *MultiNode) Reset() {
 	m.Y.Reset()
 }
 
+// HConcatNode define HConcat function
+type HConcatNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func HConcat(x Node, y Node) *HConcatNode {
+	return &HConcatNode{
+		X: x,
+		Y: y,
+	}
+}
+
+func (m *HConcatNode) Forward() *Matrix {
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	if m.Value == nil {
+		m.Value = x.HConcat(y)
+	}
+	return m.Value
+}
+
+func (m *HConcatNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	var dataX, dataY []float64
+	for i := range x.Rows {
+		dataX = append(dataX, grad.Data[i*grad.Cols:i*grad.Cols+x.Cols]...)
+		dataY = append(dataY, grad.Data[i*grad.Cols+x.Cols:i*grad.Cols+grad.Cols]...)
+	}
+	gradX := NewMatrix(x.Rows, x.Cols, dataX)
+	gradY := NewMatrix(y.Rows, y.Cols, dataY)
+	m.X.Backward(gradX)
+	m.Y.Backward(gradY)
+}
+func (m *HConcatNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
+	m.Y.Reset()
+}
+
 // -----------------
 // Activation functions
 // -------------------
