@@ -1,6 +1,8 @@
 package goraph
 
 import (
+	"encoding/json"
+	"io"
 	"math"
 	"math/rand/v2"
 )
@@ -14,26 +16,30 @@ type Node interface {
 
 // VariableNode define variable node
 type VariableNode struct {
-	Value    *Matrix
-	Gradient *Matrix
+	Name     string  `json:"name"`
+	Value    *Matrix `json:"value"`
+	Gradient *Matrix `json:"-"`
 }
 
-func NewVariable(rows, cols int, data []float64) *VariableNode {
+func NewVariable(rows, cols int, data []float64, name string) *VariableNode {
 	return &VariableNode{
+		Name:     name,
 		Value:    NewMatrix(rows, cols, data),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
 }
 
-func NewConstVariable(rows, cols int, value float64) *VariableNode {
+func NewConstVariable(rows, cols int, value float64, name string) *VariableNode {
 	return &VariableNode{
+		Name:     name,
 		Value:    NewConstMatrix(rows, cols, value),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
 }
 
-func NewRandomVariable(rows, cols int, f func() float64) *VariableNode {
+func NewRandomVariable(rows, cols int, f func() float64, name string) *VariableNode {
 	return &VariableNode{
+		Name:     name,
 		Value:    NewRandomMatrix(rows, cols, f),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
@@ -68,9 +74,9 @@ func Add(x Node, y Node) *AddNode {
 }
 
 func (m *AddNode) Forward() *Matrix {
-	x := m.X.Forward()
-	y := m.Y.Forward()
 	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
 		m.Value = x.Add(y)
 	}
 	return m.Value
@@ -102,9 +108,9 @@ func Multi(x Node, y Node) *MultiNode {
 }
 
 func (m *MultiNode) Forward() *Matrix {
-	x := m.X.Forward()
-	y := m.Y.Forward()
 	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
 		m.Value = x.Multi(y)
 	}
 	return m.Value
@@ -123,7 +129,7 @@ func (m *MultiNode) Reset() {
 	m.Y.Reset()
 }
 
-// HConcatNode define HConcat function
+// HConcatNode define matrix horizontal concatenation function
 type HConcatNode struct {
 	X     Node
 	Y     Node
@@ -138,9 +144,9 @@ func HConcat(x Node, y Node) *HConcatNode {
 }
 
 func (m *HConcatNode) Forward() *Matrix {
-	x := m.X.Forward()
-	y := m.Y.Forward()
 	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
 		m.Value = x.HConcat(y)
 	}
 	return m.Value
@@ -165,6 +171,43 @@ func (m *HConcatNode) Reset() {
 	m.Y.Reset()
 }
 
+// VConcatNode define matrix vertical concatenation function
+type VConcatNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func VConcat(x Node, y Node) *VConcatNode {
+	return &VConcatNode{
+		X: x,
+		Y: y,
+	}
+}
+func (m *VConcatNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		m.Value = x.VConcat(y)
+	}
+	return m.Value
+}
+func (m *VConcatNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	dataX := grad.Data[:x.Rows*grad.Cols]
+	dataY := grad.Data[x.Rows*grad.Cols:]
+	gradX := NewMatrix(x.Rows, x.Cols, dataX)
+	gradY := NewMatrix(y.Rows, y.Cols, dataY)
+	m.X.Backward(gradX)
+	m.Y.Backward(gradY)
+}
+func (m *VConcatNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
+	m.Y.Reset()
+}
+
 // -----------------
 // Activation functions
 // -------------------
@@ -181,12 +224,12 @@ func Sigmoid(x Node) *SigmoidNode {
 	}
 }
 func (m *SigmoidNode) Forward() *Matrix {
-	x := m.X.Forward()
-	data := make([]float64, x.Rows*x.Cols)
-	for i := range x.Data {
-		data[i] = 1.0 / (1.0 + math.Exp(-x.Data[i]))
-	}
 	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range x.Data {
+			data[i] = 1.0 / (1.0 + math.Exp(-x.Data[i]))
+		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
 	return m.Value
@@ -216,16 +259,16 @@ func ReLu(x Node) *ReLuNode {
 }
 
 func (m *ReLuNode) Forward() *Matrix {
-	x := m.X.Forward()
-	data := make([]float64, x.Rows*x.Cols)
-	for i, v := range x.Data {
-		if v > 0 {
-			data[i] = v
-		} else {
-			data[i] = 0
-		}
-	}
 	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i, v := range x.Data {
+			if v > 0 {
+				data[i] = v
+			} else {
+				data[i] = 0
+			}
+		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
 	return m.Value
@@ -259,12 +302,12 @@ func Tanh(x Node) *TanhNode {
 	}
 }
 func (m *TanhNode) Forward() *Matrix {
-	x := m.X.Forward()
-	data := make([]float64, x.Rows*x.Cols)
-	for i := range data {
-		data[i] = (math.Exp(x.Data[i]) - math.Exp(-x.Data[i])) / (math.Exp(x.Data[i]) + math.Exp(-x.Data[i]))
-	}
 	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range data {
+			data[i] = (math.Exp(x.Data[i]) - math.Exp(-x.Data[i])) / (math.Exp(x.Data[i]) + math.Exp(-x.Data[i]))
+		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
 	return m.Value
@@ -296,16 +339,16 @@ func Dropout(x Node, p float64) *DropoutNode {
 	}
 }
 func (m *DropoutNode) Forward() *Matrix {
-	x := m.X.Forward()
-	data := make([]float64, x.Rows*x.Cols)
-	for i := range data {
-		if rand.Float64() < m.P {
-			data[i] = x.Data[i]
-		} else {
-			data[i] = 0
-		}
-	}
 	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range data {
+			if rand.Float64() < m.P {
+				data[i] = x.Data[i]
+			} else {
+				data[i] = 0
+			}
+		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
 	return m.Value
@@ -322,6 +365,48 @@ func (m *DropoutNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *DropoutNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
+}
+
+// SoftmaxNode define softmax activation function
+type SoftmaxNode struct {
+	X     Node
+	Value *Matrix
+}
+
+func Softmax(x Node) *SoftmaxNode {
+	return &SoftmaxNode{
+		X: x,
+	}
+}
+func (m *SoftmaxNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range x.Rows {
+			sum := 0.0
+			values := make([]float64, x.Cols)
+			for j := range x.Cols {
+				values[j] = math.Exp(x.Data[i*x.Rows+j])
+				sum += values[j]
+			}
+			for j, v := range values {
+				data[i*x.Rows+j] = v / sum
+			}
+		}
+		m.Value = NewMatrix(x.Rows, x.Cols, data)
+	}
+	return m.Value
+}
+func (m *SoftmaxNode) Backward(grad *Matrix) {
+	myGrad := NewConstMatrix(m.Value.Rows, m.Value.Cols, 0.0)
+	for i := range myGrad.Data {
+		myGrad.Data[i] = m.Value.Data[i] * (1 - m.Value.Data[i]) * grad.Data[i]
+	}
+	m.X.Backward(myGrad)
+}
+func (m *SoftmaxNode) Reset() {
 	m.Value = nil
 	m.X.Reset()
 }
@@ -344,21 +429,21 @@ func MSELoss(x Node, y Node) *MSELossNode {
 }
 
 func (m *MSELossNode) Forward() *Matrix {
-	x := m.X.Forward()
-	y := m.Y.Forward()
-	if x.Rows != y.Rows || x.Cols != y.Cols {
-		panic("Matrix dimensions do not match")
-	}
-	data := make([]float64, 1)
-	for i := range x.Rows {
-		loss := 0.0
-		for j := range x.Cols {
-			loss += math.Pow(x.Data[i*x.Cols+j]-y.Data[i*x.Cols+j], 2)
-		}
-		data[0] += loss / float64(x.Cols)
-	}
-	data[0] /= float64(x.Rows)
 	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		if x.Rows != y.Rows || x.Cols != y.Cols {
+			panic("Matrix dimensions do not match")
+		}
+		data := make([]float64, 1)
+		for i := range x.Rows {
+			loss := 0.0
+			for j := range x.Cols {
+				loss += math.Pow(x.Data[i*x.Cols+j]-y.Data[i*x.Cols+j], 2)
+			}
+			data[0] += loss / float64(x.Cols)
+		}
+		data[0] /= float64(x.Rows)
 		m.Value = NewMatrix(1, 1, data)
 	}
 	return m.Value
@@ -384,4 +469,91 @@ func (m *MSELossNode) Reset() {
 	m.Value = nil
 	m.X.Reset()
 	m.Y.Reset()
+}
+
+// CrossEntropyLossNode define cross entropy loss function
+type CrossEntropyLossNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func CrossEntropyLoss(x Node, y Node) *CrossEntropyLossNode {
+	return &CrossEntropyLossNode{
+		X: x,
+		Y: y,
+	}
+}
+func (m *CrossEntropyLossNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		data := make([]float64, 1)
+		for i, vy := range y.Data {
+			if vy == 1.0 {
+				data[0] += -math.Log(x.Data[i])
+			}
+		}
+		data[0] /= float64(x.Rows)
+		m.Value = NewMatrix(1, 1, data)
+	}
+	return m.Value
+}
+func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
+	if grad == nil {
+		grad = NewConstMatrix(1, 1, 1)
+	}
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	dataX := make([]float64, x.Rows*x.Cols)
+	for i := range dataX {
+		if y.Data[i] == 1.0 {
+			dataX[i] = -1.0 / x.Data[i] * grad.Data[0] / float64(x.Rows)
+		} else {
+			dataX[i] = 1.0 / (1.0 - x.Data[i]) * grad.Data[0] / float64(x.Rows)
+		}
+	}
+	gradX := NewMatrix(x.Rows, x.Cols, dataX)
+	gradY := NewConstMatrix(y.Rows, y.Cols, 0)
+	m.X.Backward(gradX)
+	m.Y.Backward(gradY)
+}
+func (m *CrossEntropyLossNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
+	m.Y.Reset()
+}
+
+//-----------------------------
+//Storage
+//-----------------------------
+
+func Save(writer io.Writer, params ...*VariableNode) error {
+	jsonData, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	_, err = writer.Write(jsonData)
+	return err
+}
+
+func Load(reader io.Reader, params ...*VariableNode) error {
+	jsonData, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	var paramsData []*VariableNode
+	err = json.Unmarshal(jsonData, &paramsData)
+	if err != nil {
+		return err
+	}
+	for _, param := range params {
+		for _, pd := range paramsData {
+			if param.Name == pd.Name {
+				param.Value = pd.Value
+				break
+			}
+		}
+	}
+	return nil
 }

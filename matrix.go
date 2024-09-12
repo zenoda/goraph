@@ -3,9 +3,9 @@ package goraph
 import "fmt"
 
 type Matrix struct {
-	Data []float64
-	Rows int
-	Cols int
+	Data []float64 `json:"data"`
+	Rows int       `json:"rows"`
+	Cols int       `json:"cols"`
 }
 
 func NewMatrix(rows, cols int, data []float64) *Matrix {
