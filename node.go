@@ -266,7 +266,7 @@ func (m *ReLuNode) Forward() *Matrix {
 			if v > 0 {
 				data[i] = v
 			} else {
-				data[i] = 0
+				data[i] = 0.01
 			}
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
@@ -280,7 +280,7 @@ func (m *ReLuNode) Backward(grad *Matrix) {
 		if v > 0 {
 			myGrad.Data[i] = grad.Data[i]
 		} else {
-			myGrad.Data[i] = 0
+			myGrad.Data[i] = grad.Data[i] * 0.01
 		}
 	}
 	m.X.Backward(myGrad)
@@ -316,7 +316,7 @@ func (m *TanhNode) Forward() *Matrix {
 func (m *TanhNode) Backward(grad *Matrix) {
 	myGrad := NewConstMatrix(m.Value.Rows, m.Value.Cols, 0.0)
 	for i := range myGrad.Data {
-		myGrad.Data[i] = (1 - math.Pow(m.Value.Data[i], 2.0)) * grad.Data[i]
+		myGrad.Data[i] = (1 - math.Pow(m.Value.Data[i], 2.0) + 0.01) * grad.Data[i]
 	}
 	m.X.Backward(myGrad)
 }
