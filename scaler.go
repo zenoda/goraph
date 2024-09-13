@@ -8,11 +8,12 @@ type Scaler interface {
 }
 
 type MinMaxScaler struct {
-	Min []float64 `json:"min"`
-	Max []float64 `json:"max"`
+	Min    []float64 `json:"min"`
+	Max    []float64 `json:"max"`
+	Groups [][]int   `json:"groups"`
 }
 
-func NewMinMaxScaler(n int) *MinMaxScaler {
+func NewMinMaxScaler(n int, groups [][]int) *MinMaxScaler {
 	min := make([]float64, n)
 	max := make([]float64, n)
 	for i := range n {
@@ -20,8 +21,9 @@ func NewMinMaxScaler(n int) *MinMaxScaler {
 		max[i] = math.Inf(-1)
 	}
 	return &MinMaxScaler{
-		Min: min,
-		Max: max,
+		Min:    min,
+		Max:    max,
+		Groups: groups,
 	}
 }
 
@@ -31,6 +33,22 @@ func (m *MinMaxScaler) Fit(data *Matrix) {
 			m.Min[col] = v
 		} else if v > m.Max[col] {
 			m.Max[col] = v
+		}
+	}
+	for _, group := range m.Groups {
+		min := math.Inf(1)
+		max := math.Inf(-1)
+		for _, col := range group {
+			if m.Min[col] < min {
+				min = m.Min[col]
+			}
+			if m.Max[col] > max {
+				max = m.Max[col]
+			}
+		}
+		for _, col := range group {
+			m.Min[col] = min
+			m.Max[col] = max
 		}
 	}
 }

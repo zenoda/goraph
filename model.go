@@ -3,7 +3,6 @@ package goraph
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -40,8 +39,7 @@ func (m *Model) Load(filePath string) error {
 		decoder := json.NewDecoder(file)
 		return decoder.Decode(m)
 	}
-	log.Print("Model file not found")
-	return nil
+	return err
 }
 
 func (m *Model) String() string {

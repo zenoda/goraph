@@ -388,11 +388,11 @@ func (m *SoftmaxNode) Forward() *Matrix {
 			sum := 0.0
 			values := make([]float64, x.Cols)
 			for j := range x.Cols {
-				values[j] = math.Exp(x.Data[i*x.Rows+j])
+				values[j] = math.Exp(x.Data[i*x.Cols+j])
 				sum += values[j]
 			}
 			for j, v := range values {
-				data[i*x.Rows+j] = v / sum
+				data[i*x.Cols+j] = v / sum
 			}
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
