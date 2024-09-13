@@ -3,6 +3,7 @@ package goraph
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -29,13 +30,18 @@ func (m *Model) Save(filePath string) error {
 }
 
 func (m *Model) Load(filePath string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return err
+	_, err := os.Stat(filePath)
+	if err == nil {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		decoder := json.NewDecoder(file)
+		return decoder.Decode(m)
 	}
-	defer file.Close()
-	decoder := json.NewDecoder(file)
-	return decoder.Decode(m)
+	log.Print("Model file not found")
+	return nil
 }
 
 func (m *Model) String() string {
