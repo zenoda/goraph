@@ -128,3 +128,39 @@ func (m *Matrix) VConcat(other *Matrix) (result *Matrix) {
 	data = append(data, other.Data...)
 	return NewMatrix(m.Rows+other.Rows, m.Cols, data)
 }
+
+func (m *Matrix) RowSlice(start, end int) *Matrix {
+	if start < end {
+		panic("start must be greater than end")
+	}
+	if start >= m.Rows {
+		panic("start must be less than the number of rows")
+	}
+	if end > m.Rows {
+		panic("end must be less than or equal to the number of rows")
+	}
+	data := make([]float64, (end-start)*m.Cols)
+	for i := range data {
+		data[i] = m.Data[i+m.Cols*start]
+	}
+	return NewMatrix(end-start, m.Cols, data)
+}
+
+func (m *Matrix) ColSlice(start, end int) *Matrix {
+	if start < end {
+		panic("start must be greater than end")
+	}
+	if start >= m.Cols {
+		panic("start must be less than the number of cols")
+	}
+	if end > m.Cols {
+		panic("end must be less than or equal to the number of cols")
+	}
+	data := make([]float64, m.Rows*(end-start))
+	for i := range m.Rows {
+		for j := range end - start {
+			data[i*(end-start)+j] = m.Data[i*m.Cols+start+j]
+		}
+	}
+	return NewMatrix(m.Rows, end-start, data)
+}

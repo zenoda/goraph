@@ -13,13 +13,9 @@ type MinMaxScaler struct {
 	Groups [][]int   `json:"groups"`
 }
 
-func NewMinMaxScaler(n int, groups [][]int) *MinMaxScaler {
-	min := make([]float64, n)
-	max := make([]float64, n)
-	for i := range n {
-		min[i] = math.Inf(1)
-		max[i] = math.Inf(-1)
-	}
+func NewMinMaxScaler(dim int, groups [][]int) *MinMaxScaler {
+	min := make([]float64, dim)
+	max := make([]float64, dim)
 	return &MinMaxScaler{
 		Min:    min,
 		Max:    max,
@@ -28,22 +24,17 @@ func NewMinMaxScaler(n int, groups [][]int) *MinMaxScaler {
 }
 
 func (m *MinMaxScaler) Fit(data *Matrix) {
-	for i, v := range data.Data {
-		if col := i % data.Cols; v < m.Min[col] {
-			m.Min[col] = v
-		} else if v > m.Max[col] {
-			m.Max[col] = v
-		}
-	}
 	for _, group := range m.Groups {
 		min := math.Inf(1)
 		max := math.Inf(-1)
-		for _, col := range group {
-			if m.Min[col] < min {
-				min = m.Min[col]
-			}
-			if m.Max[col] > max {
-				max = m.Max[col]
+		for i := range data.Rows {
+			for _, col := range group {
+				if data.Data[i*data.Cols+col] < min {
+					min = data.Data[i*data.Cols+col]
+				}
+				if data.Data[i*data.Cols+col] > max {
+					max = data.Data[i*data.Cols+col]
+				}
 			}
 		}
 		for _, col := range group {
@@ -55,12 +46,73 @@ func (m *MinMaxScaler) Fit(data *Matrix) {
 
 func (m *MinMaxScaler) Transform(data *Matrix) *Matrix {
 	result := NewConstMatrix(data.Rows, data.Cols, 0)
+	for _, group := range m.Groups {
+		for i := range data.Rows {
+			for _, col := range group {
+				if diff := m.Max[col] - m.Min[col]; diff == 0 {
+					result.Data[i*data.Cols+col] = 0
+				} else {
+					result.Data[i*data.Cols+col] = (result.Data[i*data.Cols+col] - m.Min[col]) / diff
+				}
+			}
+		}
+	}
+	return result
+}
+
+type ZScoreScaler struct {
+	Mean         []float64 `json:"mean"`
+	StdDeviation []float64 `json:"stdDeviation"`
+	Groups       [][]int   `json:"-"`
+}
+
+func NewZScoreScaler(dim int, groups [][]int) *ZScoreScaler {
+	mean := make([]float64, dim)
+	stdDeviation := make([]float64, dim)
+	return &ZScoreScaler{
+		Mean:         mean,
+		StdDeviation: stdDeviation,
+		Groups:       groups,
+	}
+}
+
+func (m *ZScoreScaler) Fit(data *Matrix) {
+	for _, group := range m.Groups {
+		mean := 0.0
+		for i := range data.Rows {
+			for _, col := range group {
+				mean += data.Data[i*data.Cols+col]
+			}
+		}
+		mean /= float64(data.Rows * len(group))
+		for _, col := range group {
+			m.Mean[col] = mean
+		}
+	}
+	for _, group := range m.Groups {
+		stdDeviation := 0.0
+		for i := range data.Rows {
+			for _, col := range group {
+				stdDeviation += math.Pow(data.Data[i*data.Cols+col]-m.Mean[col], 2)
+			}
+		}
+		stdDeviation = math.Sqrt(stdDeviation / float64(data.Rows*len(group)))
+		for _, col := range group {
+			m.StdDeviation[col] = stdDeviation
+		}
+	}
+}
+
+func (m *ZScoreScaler) Transform(data *Matrix) *Matrix {
+	result := NewConstMatrix(data.Rows, data.Cols, 0)
 	for i, v := range data.Data {
-		col := i % data.Cols
-		if diff := m.Max[col] - m.Min[col]; diff == 0 {
-			result.Data[i] = 0
-		} else {
-			result.Data[i] = (v - m.Min[col]) / diff
+		result.Data[i] = v
+	}
+	for _, group := range m.Groups {
+		for i := range data.Rows {
+			for _, col := range group {
+				result.Data[i*data.Cols+col] = (data.Data[i*data.Cols+col] - m.Mean[col]) / m.StdDeviation[col]
+			}
 		}
 	}
 	return result

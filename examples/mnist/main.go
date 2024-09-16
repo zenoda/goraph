@@ -96,27 +96,3 @@ func readSamples(sampleType string, batchSize int) (inputs, targets []*goraph.Ma
 	}
 	return
 }
-
-func saveModel(params []*goraph.VariableNode) {
-	file, err := os.OpenFile("model.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		panic(err)
-	}
-	err = goraph.Save(file, params...)
-	if err != nil {
-		panic(err)
-	}
-}
-func loadModel(params []*goraph.VariableNode) {
-	_, err := os.Stat("model.json")
-	if err == nil {
-		file, err := os.Open("model.json")
-		if err != nil {
-			panic(err)
-		}
-		err = goraph.Load(file, params...)
-		if err != nil {
-			panic(err)
-		}
-	}
-}

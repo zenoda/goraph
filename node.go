@@ -1,8 +1,6 @@
 package goraph
 
 import (
-	"encoding/json"
-	"io"
 	"math"
 	"math/rand/v2"
 )
@@ -206,6 +204,79 @@ func (m *VConcatNode) Reset() {
 	m.Value = nil
 	m.X.Reset()
 	m.Y.Reset()
+}
+
+// RowSliceNode define row slice function
+type RowSliceNode struct {
+	X          Node
+	Start, End int
+	Value      *Matrix
+}
+
+func RowSlice(x Node, start, end int) *RowSliceNode {
+	return &RowSliceNode{
+		X:     x,
+		Start: start,
+		End:   end,
+	}
+}
+
+func (m *RowSliceNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.RowSlice(m.Start, m.End)
+	}
+	return m.Value
+}
+
+func (m *RowSliceNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	myGrad := NewConstMatrix(x.Rows, x.Cols, 0)
+	for i := range m.End - m.Start {
+		for j := range x.Cols {
+			myGrad.Data[(i+m.Start)*x.Cols+j] = grad.Data[i*x.Cols+j]
+		}
+	}
+	m.X.Backward(myGrad)
+}
+func (m *RowSliceNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
+}
+
+type ColSliceNode struct {
+	X          Node
+	Start, End int
+	Value      *Matrix
+}
+
+func ColSlice(x Node, start, end int) *ColSliceNode {
+	return &ColSliceNode{
+		X:     x,
+		Start: start,
+		End:   end,
+	}
+}
+func (m *ColSliceNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.ColSlice(m.Start, m.End)
+	}
+	return m.Value
+}
+func (m *ColSliceNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	myGrad := NewConstMatrix(x.Rows, x.Cols, 0)
+	for i := range x.Rows {
+		for j := range m.End - m.Start {
+			myGrad.Data[i*x.Cols+j+m.Start] = grad.Data[i*grad.Cols+j]
+		}
+	}
+	m.X.Backward(myGrad)
+}
+func (m *ColSliceNode) Reset() {
+	m.Value = nil
+	m.X.Reset()
 }
 
 // -----------------
@@ -522,38 +593,4 @@ func (m *CrossEntropyLossNode) Reset() {
 	m.Value = nil
 	m.X.Reset()
 	m.Y.Reset()
-}
-
-//-----------------------------
-//Storage
-//-----------------------------
-
-func Save(writer io.Writer, params ...*VariableNode) error {
-	jsonData, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-	_, err = writer.Write(jsonData)
-	return err
-}
-
-func Load(reader io.Reader, params ...*VariableNode) error {
-	jsonData, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	var paramsData []*VariableNode
-	err = json.Unmarshal(jsonData, &paramsData)
-	if err != nil {
-		return err
-	}
-	for _, param := range params {
-		for _, pd := range paramsData {
-			if param.Name == pd.Name {
-				param.Value = pd.Value
-				break
-			}
-		}
-	}
-	return nil
 }
