@@ -69,11 +69,11 @@ func readSamples(sampleType string, batchSize int) (inputs, targets []*goraph.Ma
 	var imgFilePath, labelFilePath string
 	switch sampleType {
 	case "train":
-		imgFilePath = "dataset/train-images-idx3-ubyte"
-		labelFilePath = "dataset/train-labels-idx1-ubyte"
+		imgFilePath = "../dataset/train-images-idx3-ubyte"
+		labelFilePath = "../dataset/train-labels-idx1-ubyte"
 	case "test":
-		imgFilePath = "dataset/t10k-images-idx3-ubyte"
-		labelFilePath = "dataset/t10k-labels-idx1-ubyte"
+		imgFilePath = "../dataset/t10k-images-idx3-ubyte"
+		labelFilePath = "../dataset/t10k-labels-idx1-ubyte"
 	}
 	imgs, err := readImageFile(os.Open(imgFilePath))
 	if err != nil {
