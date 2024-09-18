@@ -52,7 +52,7 @@ func (m *MinMaxScaler) Transform(data *Matrix) *Matrix {
 				if diff := m.Max[col] - m.Min[col]; diff == 0 {
 					result.Data[i*data.Cols+col] = 0
 				} else {
-					result.Data[i*data.Cols+col] = (result.Data[i*data.Cols+col] - m.Min[col]) / diff
+					result.Data[i*data.Cols+col] = (data.Data[i*data.Cols+col] - m.Min[col]) / diff
 				}
 			}
 		}

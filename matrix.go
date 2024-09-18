@@ -130,8 +130,8 @@ func (m *Matrix) VConcat(other *Matrix) (result *Matrix) {
 }
 
 func (m *Matrix) RowSlice(start, end int) *Matrix {
-	if start < end {
-		panic("start must be greater than end")
+	if start > end {
+		panic("start must be less than end")
 	}
 	if start >= m.Rows {
 		panic("start must be less than the number of rows")
@@ -163,4 +163,12 @@ func (m *Matrix) ColSlice(start, end int) *Matrix {
 		}
 	}
 	return NewMatrix(m.Rows, end-start, data)
+}
+
+func (m *Matrix) MultiElement(other *Matrix) (result *Matrix) {
+	data := make([]float64, m.Rows*m.Cols)
+	for i := range data {
+		data[i] = m.Data[i] * other.Data[i]
+	}
+	return NewMatrix(m.Rows, m.Cols, data)
 }

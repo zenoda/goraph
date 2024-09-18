@@ -337,7 +337,7 @@ func (m *ReLuNode) Forward() *Matrix {
 			if v > 0 {
 				data[i] = v
 			} else {
-				data[i] = 0.01
+				data[i] = 0.001
 			}
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
@@ -387,7 +387,7 @@ func (m *TanhNode) Forward() *Matrix {
 func (m *TanhNode) Backward(grad *Matrix) {
 	myGrad := NewConstMatrix(m.Value.Rows, m.Value.Cols, 0.0)
 	for i := range myGrad.Data {
-		myGrad.Data[i] = (1 - math.Pow(m.Value.Data[i], 2.0) + 0.01) * grad.Data[i]
+		myGrad.Data[i] = (1 - math.Pow(m.Value.Data[i], 2.0) + 0.001) * grad.Data[i]
 	}
 	m.X.Backward(myGrad)
 }
@@ -521,14 +521,14 @@ func (m *MSELossNode) Forward() *Matrix {
 }
 
 func (m *MSELossNode) Backward(grad *Matrix) {
-	if grad == nil {
-		grad = NewConstMatrix(1, 1, 1)
+	if grad != nil {
+		panic("grad param of loss backward function must be nil")
 	}
 	x := m.X.Forward()
 	y := m.Y.Forward()
 	data := make([]float64, x.Rows*x.Cols)
 	for i := range data {
-		data[i] = grad.Data[0] / float64(x.Rows) / float64(x.Cols) * 2 * (x.Data[i] - y.Data[i])
+		data[i] = (x.Data[i] - y.Data[i]) / float64(x.Cols)
 	}
 	gx := NewMatrix(x.Rows, x.Cols, data)
 	gy := NewConstMatrix(x.Rows, x.Cols, 0.0).Sub(gx)
@@ -571,17 +571,17 @@ func (m *CrossEntropyLossNode) Forward() *Matrix {
 	return m.Value
 }
 func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
-	if grad == nil {
-		grad = NewConstMatrix(1, 1, 1)
+	if grad != nil {
+		panic("grad param of loss backward function must be nil")
 	}
 	x := m.X.Forward()
 	y := m.Y.Forward()
 	dataX := make([]float64, x.Rows*x.Cols)
 	for i := range dataX {
 		if y.Data[i] == 1.0 {
-			dataX[i] = -1.0 / x.Data[i] * grad.Data[0] / float64(x.Rows)
+			dataX[i] = -1.0 / x.Data[i]
 		} else {
-			dataX[i] = 1.0 / (1.0 - x.Data[i]) * grad.Data[0] / float64(x.Rows)
+			dataX[i] = 1.0 / (1.0 - x.Data[i])
 		}
 	}
 	gradX := NewMatrix(x.Rows, x.Cols, dataX)
