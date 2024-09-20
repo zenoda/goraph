@@ -12,7 +12,6 @@ type Node interface {
 	Backward(grad *Matrix)
 	Forward() *Matrix
 	Reset()
-	GetDeps() []Node
 }
 
 /*
@@ -57,9 +56,6 @@ func (v *VariableNode) Backward(grad *Matrix) {
 func (v *VariableNode) Reset() {
 	v.Gradient = NewConstMatrix(v.Value.Rows, v.Value.Cols, 0.0)
 }
-func (v *VariableNode) GetDeps() []Node {
-	return nil
-}
 
 /*
 AddNode defines a node that performs matrix addition operations.
@@ -98,9 +94,6 @@ func (m *AddNode) Reset() {
 		m.Y.Reset()
 	}
 }
-func (m *AddNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
-}
 
 /*
 SubNode defines a node that performs matrix subtraction operations.
@@ -135,9 +128,6 @@ func (m *SubNode) Reset() {
 		m.X.Reset()
 		m.Y.Reset()
 	}
-}
-func (m *SubNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
 }
 
 /*
@@ -178,9 +168,6 @@ func (m *MultiNode) Reset() {
 		m.X.Reset()
 		m.Y.Reset()
 	}
-}
-func (m *MultiNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
 }
 
 /*
@@ -225,9 +212,6 @@ func (m *MultiElementNode) Reset() {
 		m.X.Reset()
 		m.Y.Reset()
 	}
-}
-func (m *MultiElementNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
 }
 
 /*
@@ -275,9 +259,6 @@ func (m *HConcatNode) Reset() {
 		m.Y.Reset()
 	}
 }
-func (m *HConcatNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
-}
 
 /*
 VConcatNode defines a node for matrix vertical concatenation.
@@ -318,9 +299,6 @@ func (m *VConcatNode) Reset() {
 		m.X.Reset()
 		m.Y.Reset()
 	}
-}
-func (m *VConcatNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
 }
 
 /*
@@ -364,9 +342,6 @@ func (m *RowSliceNode) Reset() {
 		m.X.Reset()
 	}
 }
-func (m *RowSliceNode) GetDeps() []Node {
-	return []Node{m.X}
-}
 
 /*
 ColSliceNode defines a node that performs matrix slicing along the column direction.
@@ -407,9 +382,6 @@ func (m *ColSliceNode) Reset() {
 		m.X.Reset()
 	}
 }
-func (m *ColSliceNode) GetDeps() []Node {
-	return []Node{m.X}
-}
 
 /*
 SigmoidNode defines a node that executes Sigmoid activation function.
@@ -447,9 +419,6 @@ func (m *SigmoidNode) Reset() {
 		m.Value = nil
 		m.X.Reset()
 	}
-}
-func (m *SigmoidNode) GetDeps() []Node {
-	return []Node{m.X}
 }
 
 /*
@@ -499,9 +468,6 @@ func (m *ReLuNode) Reset() {
 		m.X.Reset()
 	}
 }
-func (m *ReLuNode) GetDeps() []Node {
-	return []Node{m.X}
-}
 
 /*
 TanhNode defines a node that executes Tanh activation function.
@@ -540,9 +506,6 @@ func (m *TanhNode) Reset() {
 		m.Value = nil
 		m.X.Reset()
 	}
-}
-func (m *TanhNode) GetDeps() []Node {
-	return []Node{m.X}
 }
 
 /*
@@ -592,9 +555,6 @@ func (m *DropoutNode) Reset() {
 		m.X.Reset()
 	}
 }
-func (m *DropoutNode) GetDeps() []Node {
-	return []Node{m.X}
-}
 
 /*
 SoftmaxNode defines a node that executes the Softmax activation function
@@ -640,9 +600,6 @@ func (m *SoftmaxNode) Reset() {
 		m.Value = nil
 		m.X.Reset()
 	}
-}
-func (m *SoftmaxNode) GetDeps() []Node {
-	return []Node{m.X}
 }
 
 /*
@@ -705,9 +662,6 @@ func (m *MSELossNode) Reset() {
 		m.Y.Reset()
 	}
 }
-func (m *MSELossNode) GetDeps() []Node {
-	return []Node{m.X}
-}
 
 /*
 CrossEntropyLossNode defines a node dedicated to calculating cross entropy
@@ -767,9 +721,6 @@ func (m *CrossEntropyLossNode) Reset() {
 		m.Y.Reset()
 	}
 }
-func (m *CrossEntropyLossNode) GetDeps() []Node {
-	return []Node{m.X, m.Y}
-}
 
 /*
 GradThresholdNode defines a processing node that, during forward propagation,
@@ -813,6 +764,88 @@ func (m *GradThresholdNode) Reset() {
 		m.X.Reset()
 	}
 }
-func (m *GradThresholdNode) GetDeps() []Node {
-	return []Node{m.X}
+
+type PoolNode struct {
+	X      Node
+	Width  int
+	Height int
+	Stride int
+	Value  *Matrix
+	Flags  []int
+}
+
+func Pool(x Node, width, height, stride int) *PoolNode {
+	return &PoolNode{
+		X:      x,
+		Width:  width,
+		Height: height,
+		Stride: stride,
+		Value:  nil,
+		Flags:  nil,
+	}
+}
+func (m *PoolNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		var xPadding, xSteps, yPadding, ySteps int
+		if (x.Cols-m.Width)%m.Stride == 0 {
+			xPadding = 0
+			xSteps = (x.Cols-m.Width)/m.Stride + 1
+		} else {
+			xPadding = m.Stride - (x.Cols-m.Width)%m.Stride
+			xSteps = (x.Cols-m.Width+xPadding)/m.Stride + 1
+		}
+		if (x.Rows-m.Height)%m.Stride == 0 {
+			yPadding = 0
+			ySteps = (x.Rows-m.Height)/m.Stride + 1
+		} else {
+			yPadding = m.Stride - (x.Rows-m.Height)%m.Stride
+			ySteps = (x.Rows-m.Height+yPadding)/m.Stride + 1
+		}
+		data := make([]float64, xSteps*ySteps)
+		m.Flags = make([]int, xSteps*ySteps)
+		for i := range xSteps {
+			for j := range ySteps {
+				maxVal := math.Inf(-1)
+				maxValIdx := 0
+				for w := range m.Width {
+					colIdx := i*m.Stride + w - xPadding/2
+					if colIdx < 0 || colIdx >= m.Width {
+						maxVal = max(maxVal, 0)
+						continue
+					}
+					for h := range m.Height {
+						rowIdx := j*m.Stride + h - yPadding/2
+						if rowIdx < 0 || rowIdx >= m.Height {
+							maxVal = max(maxVal, 0)
+							continue
+						}
+						if x.Data[rowIdx*x.Cols+colIdx] > maxVal {
+							maxVal = x.Data[rowIdx*x.Cols+colIdx]
+							maxValIdx = rowIdx*x.Cols + colIdx
+						}
+					}
+				}
+				data[j*xSteps+i] = maxVal
+				m.Flags[j*xSteps+i] = maxValIdx
+			}
+		}
+		m.Value = NewMatrix(ySteps, xSteps, data)
+	}
+	return m.Value
+}
+func (m *PoolNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	xGrad := NewConstMatrix(x.Rows, x.Cols, 0)
+	for i, idx := range m.Flags {
+		xGrad.Data[idx] = grad.Data[i]
+	}
+	m.X.Backward(xGrad)
+}
+func (m *PoolNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.Flags = nil
+		m.X.Reset()
+	}
 }
