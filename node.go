@@ -10,6 +10,7 @@ type Node interface {
 	Backward(grad *Matrix)
 	Forward() *Matrix
 	Reset()
+	GetDeps() []Node
 }
 
 // VariableNode define variable node
@@ -52,6 +53,9 @@ func (v *VariableNode) Backward(grad *Matrix) {
 func (v *VariableNode) Reset() {
 	v.Gradient = NewConstMatrix(v.Value.Rows, v.Value.Cols, 0.0)
 }
+func (v *VariableNode) GetDeps() []Node {
+	return nil
+}
 
 //--------------------------
 // Operational functions
@@ -86,9 +90,50 @@ func (m *AddNode) Backward(grad *Matrix) {
 }
 
 func (m *AddNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *AddNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
+}
+
+// SubNode defined sub function
+type SubNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func Sub(x Node, y Node) *SubNode {
+	return &SubNode{
+		X: x,
+		Y: y,
+	}
+}
+func (m *SubNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		m.Value = x.Sub(y)
+	}
+	return m.Value
+}
+func (m *SubNode) Backward(grad *Matrix) {
+	m.X.Backward(grad)
+	m.Y.Backward(grad.Negate())
+}
+func (m *SubNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *SubNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
 }
 
 // MultiNode define multiply operation node
@@ -122,9 +167,58 @@ func (m *MultiNode) Backward(grad *Matrix) {
 }
 
 func (m *MultiNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *MultiNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
+}
+
+// MultiElementNode defined element wise product function
+type MultiElementNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func MultiElement(x Node, y Node) *MultiElementNode {
+	return &MultiElementNode{
+		X: x,
+		Y: y,
+	}
+}
+func (m *MultiElementNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		m.Value = x.MultiElement(y)
+	}
+	return m.Value
+}
+func (m *MultiElementNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	gradX := NewConstMatrix(x.Rows, x.Cols, 0)
+	gradY := NewConstMatrix(y.Rows, y.Cols, 0)
+	for i := range grad.Data {
+		gradX.Data[i] = y.Data[i] * grad.Data[i]
+		gradY.Data[i] = x.Data[i] * grad.Data[i]
+	}
+	m.X.Backward(gradX)
+	m.Y.Backward(gradY)
+}
+func (m *MultiElementNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *MultiElementNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
 }
 
 // HConcatNode define matrix horizontal concatenation function
@@ -164,9 +258,14 @@ func (m *HConcatNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *HConcatNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *HConcatNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
 }
 
 // VConcatNode define matrix vertical concatenation function
@@ -201,9 +300,14 @@ func (m *VConcatNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *VConcatNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *VConcatNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
 }
 
 // RowSliceNode define row slice function
@@ -240,8 +344,13 @@ func (m *RowSliceNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *RowSliceNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *RowSliceNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 type ColSliceNode struct {
@@ -275,8 +384,13 @@ func (m *ColSliceNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *ColSliceNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *ColSliceNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // -----------------
@@ -313,8 +427,13 @@ func (m *SigmoidNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *SigmoidNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *SigmoidNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // ReLuNode define ReLu activation function
@@ -357,8 +476,13 @@ func (m *ReLuNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *ReLuNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *ReLuNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // TanhNode define Tanh activation function
@@ -392,8 +516,13 @@ func (m *TanhNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *TanhNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *TanhNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // DropoutNode define Dropout function
@@ -436,8 +565,13 @@ func (m *DropoutNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *DropoutNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *DropoutNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // SoftmaxNode define softmax activation function
@@ -478,8 +612,13 @@ func (m *SoftmaxNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *SoftmaxNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *SoftmaxNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 //------------------------
@@ -537,9 +676,14 @@ func (m *MSELossNode) Backward(grad *Matrix) {
 }
 
 func (m *MSELossNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *MSELossNode) GetDeps() []Node {
+	return []Node{m.X}
 }
 
 // CrossEntropyLossNode define cross entropy loss function
@@ -590,7 +734,51 @@ func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *CrossEntropyLossNode) Reset() {
-	m.Value = nil
-	m.X.Reset()
-	m.Y.Reset()
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+func (m *CrossEntropyLossNode) GetDeps() []Node {
+	return []Node{m.X, m.Y}
+}
+
+type GradThresholdNode struct {
+	X         Node
+	Value     *Matrix
+	threshold float64
+}
+
+func GradThreshold(x Node, threshold float64) *GradThresholdNode {
+	return &GradThresholdNode{
+		X:         x,
+		Value:     nil,
+		threshold: threshold,
+	}
+}
+func (m *GradThresholdNode) Forward() *Matrix {
+	if m.Value == nil {
+		m.Value = m.X.Forward()
+	}
+	return m.Value
+}
+func (m *GradThresholdNode) Backward(grad *Matrix) {
+	mod := 0.0
+	for _, v := range grad.Data {
+		mod += math.Pow(v, 2)
+	}
+	mod = math.Sqrt(mod)
+	if mod >= m.threshold {
+		m.X.Backward(grad)
+	}
+}
+func (m *GradThresholdNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *GradThresholdNode) GetDeps() []Node {
+	return []Node{m.X}
 }

@@ -46,7 +46,7 @@ func main() {
 	model := goraph.NewModel(parameters, nil)
 	model.Load("rnn.json")
 	trainInputs, trainTargets := readSamples("train")
-	for epoch := range 100 {
+	for epoch := range 50 {
 		lossValue := goraph.NewConstMatrix(1, 1, 0)
 		for i := range trainInputs {
 			input.Value = trainInputs[i]
@@ -83,7 +83,7 @@ func main() {
 			lossValue = lossValue.Add(loss.Forward())
 			loss.Reset()
 		}
-		fmt.Printf("Test, Success ratio: %d\n", rate/float64(len(testInputs)))
+		fmt.Printf("Test, Success ratio: %f\n", rate/float64(len(testInputs)))
 		fmt.Printf("Test, Loss: %v\n", lossValue.Scale(1/float64(len(testInputs))))
 	}
 }

@@ -89,6 +89,14 @@ func (m *Matrix) Sub(other *Matrix) (result *Matrix) {
 	return NewMatrix(m.Rows, m.Cols, data)
 }
 
+func (m *Matrix) Negate() (result *Matrix) {
+	data := make([]float64, m.Rows*m.Cols)
+	for i := range data {
+		data[i] = -m.Data[i]
+	}
+	return NewMatrix(m.Rows, m.Cols, data)
+}
+
 func (m *Matrix) Trans() (result *Matrix) {
 	data := make([]float64, m.Rows*m.Cols)
 	for i := range m.Rows {
