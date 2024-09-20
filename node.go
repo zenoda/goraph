@@ -5,7 +5,9 @@ import (
 	"math/rand/v2"
 )
 
-// Node define the graph node interface
+/*
+Node defines the interface for computing graph nodes.
+*/
 type Node interface {
 	Backward(grad *Matrix)
 	Forward() *Matrix
@@ -13,7 +15,9 @@ type Node interface {
 	GetDeps() []Node
 }
 
-// VariableNode define variable node
+/*
+VariableNode defines a variable node.
+*/
 type VariableNode struct {
 	Name     string  `json:"name"`
 	Value    *Matrix `json:"value"`
@@ -57,11 +61,9 @@ func (v *VariableNode) GetDeps() []Node {
 	return nil
 }
 
-//--------------------------
-// Operational functions
-//--------------------------
-
-// AddNode define add operation node
+/*
+AddNode defines a node that performs matrix addition operations.
+*/
 type AddNode struct {
 	X     Node
 	Y     Node
@@ -100,7 +102,9 @@ func (m *AddNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// SubNode defined sub function
+/*
+SubNode defines a node that performs matrix subtraction operations.
+*/
 type SubNode struct {
 	X     Node
 	Y     Node
@@ -136,7 +140,9 @@ func (m *SubNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// MultiNode define multiply operation node
+/*
+MultiNode defines a node that performs matrix multiplication operations.
+*/
 type MultiNode struct {
 	X     Node
 	Y     Node
@@ -177,7 +183,10 @@ func (m *MultiNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// MultiElementNode defined element wise product function
+/*
+MultiElementNode defines a node that performs matrix multiplication based on the
+corresponding elements.
+*/
 type MultiElementNode struct {
 	X     Node
 	Y     Node
@@ -221,7 +230,9 @@ func (m *MultiElementNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// HConcatNode define matrix horizontal concatenation function
+/*
+HConcatNode defines a node for matrix horizontal concatenation.
+*/
 type HConcatNode struct {
 	X     Node
 	Y     Node
@@ -268,7 +279,9 @@ func (m *HConcatNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// VConcatNode define matrix vertical concatenation function
+/*
+VConcatNode defines a node for matrix vertical concatenation.
+*/
 type VConcatNode struct {
 	X     Node
 	Y     Node
@@ -310,7 +323,9 @@ func (m *VConcatNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
-// RowSliceNode define row slice function
+/*
+RowSliceNode defines a node that performs matrix slicing along row direction.
+*/
 type RowSliceNode struct {
 	X          Node
 	Start, End int
@@ -353,6 +368,9 @@ func (m *RowSliceNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
+/*
+ColSliceNode defines a node that performs matrix slicing along the column direction.
+*/
 type ColSliceNode struct {
 	X          Node
 	Start, End int
@@ -393,11 +411,9 @@ func (m *ColSliceNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// -----------------
-// Activation functions
-// -------------------
-
-// SigmoidNode define sigmoid function node
+/*
+SigmoidNode defines a node that executes Sigmoid activation function.
+*/
 type SigmoidNode struct {
 	X     Node
 	Value *Matrix
@@ -436,7 +452,9 @@ func (m *SigmoidNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// ReLuNode define ReLu activation function
+/*
+ReLuNode defines a node that executes ReLu activation function.
+*/
 type ReLuNode struct {
 	X     Node
 	Value *Matrix
@@ -485,7 +503,9 @@ func (m *ReLuNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// TanhNode define Tanh activation function
+/*
+TanhNode defines a node that executes Tanh activation function.
+*/
 type TanhNode struct {
 	X     Node
 	Value *Matrix
@@ -525,7 +545,9 @@ func (m *TanhNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// DropoutNode define Dropout function
+/*
+DropoutNode defines a node that performs Dropout operations.
+*/
 type DropoutNode struct {
 	X     Node
 	P     float64 //Keep probability
@@ -574,7 +596,9 @@ func (m *DropoutNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// SoftmaxNode define softmax activation function
+/*
+SoftmaxNode defines a node that executes the Softmax activation function
+*/
 type SoftmaxNode struct {
 	X     Node
 	Value *Matrix
@@ -621,10 +645,9 @@ func (m *SoftmaxNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-//------------------------
-// Loss functions
-//------------------------
-
+/*
+MSELossNode defines a node for calculating mean square error loss.
+*/
 type MSELossNode struct {
 	X     Node
 	Y     Node
@@ -686,7 +709,11 @@ func (m *MSELossNode) GetDeps() []Node {
 	return []Node{m.X}
 }
 
-// CrossEntropyLossNode define cross entropy loss function
+/*
+CrossEntropyLossNode defines a node dedicated to calculating cross entropy
+loss. It should be used in conjunction with the SoftmaxNode, meaning that the
+preceding node of this one should be a SoftmaxNode.
+*/
 type CrossEntropyLossNode struct {
 	X     Node
 	Y     Node
@@ -744,6 +771,13 @@ func (m *CrossEntropyLossNode) GetDeps() []Node {
 	return []Node{m.X, m.Y}
 }
 
+/*
+GradThresholdNode defines a processing node that, during forward propagation,
+does not perform any processing and directly passes the input to the next step.
+In backpropagation, it controls whether to continue propagation based on the set
+threshold. When the module of the gradient is less than the threshold,
+backpropagation will stop.
+*/
 type GradThresholdNode struct {
 	X         Node
 	Value     *Matrix
