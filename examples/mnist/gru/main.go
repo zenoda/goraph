@@ -51,7 +51,7 @@ func main() {
 
 		output = goraph.MultiElement(output, zt)
 		output = goraph.Add(output, goraph.MultiElement(htHat, goraph.Sub(ztb, zt)))
-		output = goraph.GradThreshold(output, 1e-4)
+		output = goraph.GradThreshold(output, 0.1)
 	}
 	output = goraph.Multi(output, w2)
 	output = goraph.Add(output, b2)
@@ -61,13 +61,13 @@ func main() {
 	loss = goraph.CrossEntropyLoss(output, target)
 	//drawGraph(loss, 0)
 	parameters := []*goraph.VariableNode{wz, bz, wr, br, wh, bh, w2, b2}
-	//optimizer := goraph.NewAdamOptimizer(parameters, 0.001, 0.9, 0.999, 1e-8)
-	optimizer := goraph.NewSGDOptimizer(parameters, 0.01, 0.9)
+	optimizer := goraph.NewAdamOptimizer(parameters, 0.001, 0.9, 0.999, 1e-8)
+	//optimizer := goraph.NewSGDOptimizer(parameters, 0.001, 0.9)
 
 	model := goraph.NewModel(parameters, nil)
 	model.Load("rnn.json")
 	trainInputs, trainTargets := readSamples("train")
-	for epoch := range 50 {
+	for epoch := range 1 {
 		lossValue := goraph.NewConstMatrix(1, 1, 0)
 		for i := range trainInputs {
 			input.Value = trainInputs[i]

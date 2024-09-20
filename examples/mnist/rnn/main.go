@@ -31,6 +31,7 @@ func main() {
 		output = goraph.Add(hi, ho)
 		output = goraph.Add(output, b1)
 		output = goraph.Tanh(output)
+		output = goraph.GradThreshold(output, 1e-4)
 	}
 	output = goraph.Multi(output, w2)
 	output = goraph.Add(output, b2)
@@ -40,8 +41,8 @@ func main() {
 	loss = goraph.CrossEntropyLoss(output, target)
 
 	parameters := []*goraph.VariableNode{w1, b1, rw, w2, b2}
-	//optimizer := goraph.NewAdamOptimizer(parameters, 0.001, 0.9, 0.999, 1e-8)
-	optimizer := goraph.NewSGDOptimizer(parameters, 0.0001, 0.9)
+	optimizer := goraph.NewAdamOptimizer(parameters, 0.00001, 0.9, 0.999, 1e-8)
+	//optimizer := goraph.NewSGDOptimizer(parameters, 0.000001, 0.9)
 
 	model := goraph.NewModel(parameters, nil)
 	model.Load("rnn.json")
