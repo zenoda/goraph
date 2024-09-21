@@ -14,50 +14,51 @@ type MinMaxScaler struct {
 }
 
 func NewMinMaxScaler(dim int, groups [][]int) *MinMaxScaler {
-	min := make([]float64, dim)
-	max := make([]float64, dim)
+	minData := make([]float64, dim)
+	maxData := make([]float64, dim)
 	return &MinMaxScaler{
-		Min:    min,
-		Max:    max,
+		Min:    minData,
+		Max:    maxData,
 		Groups: groups,
 	}
 }
 
 func (m *MinMaxScaler) Fit(data *Matrix) {
 	for _, group := range m.Groups {
-		min := math.Inf(1)
-		max := math.Inf(-1)
+		minVal := math.Inf(1)
+		maxVal := math.Inf(-1)
 		for i := range data.Rows {
 			for _, col := range group {
-				if data.Data[i*data.Cols+col] < min {
-					min = data.Data[i*data.Cols+col]
+				if data.Data[i*data.Cols+col] < minVal {
+					minVal = data.Data[i*data.Cols+col]
 				}
-				if data.Data[i*data.Cols+col] > max {
-					max = data.Data[i*data.Cols+col]
+				if data.Data[i*data.Cols+col] > maxVal {
+					maxVal = data.Data[i*data.Cols+col]
 				}
 			}
 		}
 		for _, col := range group {
-			m.Min[col] = min
-			m.Max[col] = max
+			m.Min[col] = minVal
+			m.Max[col] = maxVal
 		}
 	}
 }
 
 func (m *MinMaxScaler) Transform(data *Matrix) *Matrix {
-	result := NewConstMatrix(data.Rows, data.Cols, 0)
+	resultData := make([]float64, len(data.Data))
+	copy(resultData, data.Data)
 	for _, group := range m.Groups {
 		for i := range data.Rows {
 			for _, col := range group {
 				if diff := m.Max[col] - m.Min[col]; diff == 0 {
-					result.Data[i*data.Cols+col] = 0
+					resultData[i*data.Cols+col] = 0
 				} else {
-					result.Data[i*data.Cols+col] = (data.Data[i*data.Cols+col] - m.Min[col]) / diff
+					resultData[i*data.Cols+col] = (data.Data[i*data.Cols+col] - m.Min[col]) / diff
 				}
 			}
 		}
 	}
-	return result
+	return NewMatrix(data.Rows, data.Cols, resultData)
 }
 
 type ZScoreScaler struct {
