@@ -45,7 +45,7 @@ func main() {
 	//optimizer := goraph.NewSGDOptimizer(parameters, 0.000001, 0.9)
 
 	model := goraph.NewModel(parameters, nil)
-	model.Load("rnn.json")
+	model.Load("model.json")
 	trainInputs, trainTargets := readSamples("train")
 	for epoch := range 50 {
 		lossValue := goraph.NewConstMatrix(1, 1, 0)
@@ -60,7 +60,7 @@ func main() {
 		}
 		fmt.Printf("Epoch: %d, Loss: %v\n", epoch, lossValue.Scale(1/float64(len(trainInputs))))
 	}
-	model.Save("rnn.json")
+	model.Save("model.json")
 
 	testInputs, testTargets := readSamples("test")
 	{

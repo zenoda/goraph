@@ -180,3 +180,9 @@ func (m *Matrix) MultiElement(other *Matrix) (result *Matrix) {
 	}
 	return NewMatrix(m.Rows, m.Cols, data)
 }
+
+func (m *Matrix) Reshape(rows, cols int) *Matrix {
+	data := make([]float64, rows*cols)
+	copy(data, m.Data)
+	return NewMatrix(rows, cols, data)
+}

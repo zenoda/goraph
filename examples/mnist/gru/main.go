@@ -5,7 +5,6 @@ import (
 	"goraph"
 	"math/rand/v2"
 	"os"
-	"reflect"
 )
 
 func NewRandFunc(dim int) func() float64 {
@@ -65,7 +64,7 @@ func main() {
 	//optimizer := goraph.NewSGDOptimizer(parameters, 0.001, 0.9)
 
 	model := goraph.NewModel(parameters, nil)
-	model.Load("rnn.json")
+	model.Load("model.json")
 	trainInputs, trainTargets := readSamples("train")
 	for epoch := range 1 {
 		lossValue := goraph.NewConstMatrix(1, 1, 0)
@@ -80,7 +79,7 @@ func main() {
 		}
 		fmt.Printf("Epoch: %d, Loss: %v\n", epoch, lossValue.Scale(1/float64(len(trainInputs))))
 	}
-	model.Save("rnn.json")
+	model.Save("model.json")
 
 	testInputs, testTargets := readSamples("test")
 	{
@@ -106,22 +105,6 @@ func main() {
 		}
 		fmt.Printf("Test, Success ratio: %f\n", rate/float64(len(testInputs)))
 		fmt.Printf("Test, Loss: %v\n", lossValue.Scale(1/float64(len(testInputs))))
-	}
-}
-
-func drawGraph(node goraph.Node, level int) {
-	//if level > 60 {
-	//	panic("level too large")
-	//}
-	for range level {
-		fmt.Print("-")
-	}
-	t := reflect.TypeOf(node)
-	fmt.Println(t)
-	if node.GetDeps() != nil {
-		for _, dep := range node.GetDeps() {
-			drawGraph(dep, level+1)
-		}
 	}
 }
 

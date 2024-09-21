@@ -214,6 +214,41 @@ func (m *MultiElementNode) Reset() {
 	}
 }
 
+type ReshapeNode struct {
+	X     Node
+	Rows  int
+	Cols  int
+	Value *Matrix
+}
+
+func Reshape(x Node, rows, cols int) *ReshapeNode {
+	return &ReshapeNode{
+		X:     x,
+		Rows:  rows,
+		Cols:  cols,
+		Value: nil,
+	}
+}
+func (m *ReshapeNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.Reshape(m.Rows, m.Cols)
+	}
+	return m.Value
+}
+func (m *ReshapeNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	xGrad := NewConstMatrix(x.Rows, x.Cols, 0)
+	copy(xGrad.Data, grad.Data)
+	m.X.Backward(xGrad)
+}
+func (m *ReshapeNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+
 /*
 HConcatNode defines a node for matrix horizontal concatenation.
 */
@@ -790,17 +825,17 @@ func (m *PoolNode) Forward() *Matrix {
 		var xPadding, xSteps, yPadding, ySteps int
 		if (x.Cols-m.Width)%m.Stride == 0 {
 			xPadding = 0
-			xSteps = (x.Cols-m.Width)/m.Stride + 1
+			xSteps = (x.Cols - m.Width) / m.Stride
 		} else {
 			xPadding = m.Stride - (x.Cols-m.Width)%m.Stride
-			xSteps = (x.Cols-m.Width+xPadding)/m.Stride + 1
+			xSteps = (x.Cols - m.Width + xPadding) / m.Stride
 		}
 		if (x.Rows-m.Height)%m.Stride == 0 {
 			yPadding = 0
-			ySteps = (x.Rows-m.Height)/m.Stride + 1
+			ySteps = (x.Rows - m.Height) / m.Stride
 		} else {
 			yPadding = m.Stride - (x.Rows-m.Height)%m.Stride
-			ySteps = (x.Rows-m.Height+yPadding)/m.Stride + 1
+			ySteps = (x.Rows - m.Height + yPadding) / m.Stride
 		}
 		data := make([]float64, xSteps*ySteps)
 		m.Flags = make([]int, xSteps*ySteps)
@@ -810,13 +845,13 @@ func (m *PoolNode) Forward() *Matrix {
 				maxValIdx := 0
 				for w := range m.Width {
 					colIdx := i*m.Stride + w - xPadding/2
-					if colIdx < 0 || colIdx >= m.Width {
+					if colIdx < 0 || colIdx >= x.Cols {
 						maxVal = max(maxVal, 0)
 						continue
 					}
 					for h := range m.Height {
 						rowIdx := j*m.Stride + h - yPadding/2
-						if rowIdx < 0 || rowIdx >= m.Height {
+						if rowIdx < 0 || rowIdx >= x.Rows {
 							maxVal = max(maxVal, 0)
 							continue
 						}
@@ -847,5 +882,123 @@ func (m *PoolNode) Reset() {
 		m.Value = nil
 		m.Flags = nil
 		m.X.Reset()
+	}
+}
+
+type ConvNode struct {
+	X        Node
+	Kernel   Node
+	Stride   int
+	Value    *Matrix
+	XPadding int
+	YPadding int
+}
+
+func Conv(x Node, kernel Node, stride int) *ConvNode {
+	return &ConvNode{
+		X:        x,
+		Kernel:   kernel,
+		Stride:   stride,
+		Value:    nil,
+		XPadding: 0,
+		YPadding: 0,
+	}
+}
+func (m *ConvNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		kernel := m.Kernel.Forward()
+		var xPadding, xSteps, yPadding, ySteps int
+		if x.Cols%m.Stride == 0 {
+			xPadding = kernel.Cols
+			xSteps = x.Cols / m.Stride
+		} else {
+			xPadding = kernel.Cols + (m.Stride - x.Cols%m.Stride)
+			xSteps = (x.Cols + m.Stride - x.Cols%m.Stride) / m.Stride
+		}
+		if x.Rows%m.Stride == 0 {
+			yPadding = kernel.Rows
+			ySteps = x.Rows / m.Stride
+		} else {
+			yPadding = kernel.Rows + (m.Stride - x.Rows%m.Stride)
+			ySteps = (x.Rows + m.Stride - x.Rows%m.Stride) / m.Stride
+		}
+		data := make([]float64, xSteps*ySteps)
+		for i := range xSteps {
+			for j := range ySteps {
+				sumVal := 0.0
+				for kx := range kernel.Cols {
+					colIdx := i*m.Stride + kx - xPadding/2
+					if colIdx < 0 || colIdx >= x.Cols {
+						continue
+					}
+					for ky := range kernel.Rows {
+						rowIdx := j*m.Stride + ky - yPadding/2
+						if rowIdx < 0 || rowIdx >= x.Rows {
+							continue
+						}
+						sumVal += x.Data[rowIdx*x.Cols+colIdx] * kernel.Data[ky*kernel.Cols+kx]
+					}
+				}
+				data[j*xSteps+i] = sumVal
+			}
+		}
+		m.Value = NewMatrix(ySteps, xSteps, data)
+		m.XPadding = xPadding
+		m.YPadding = yPadding
+	}
+	return m.Value
+}
+func (m *ConvNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	kernel := m.Kernel.Forward()
+	xGrad := NewConstMatrix(x.Rows, x.Cols, 0)
+	kernelGrad := NewConstMatrix(kernel.Rows, kernel.Cols, 0)
+
+	for gr := range grad.Rows {
+		for gc := range grad.Cols {
+			for kr := range kernel.Rows {
+				rowIdx := gr*m.Stride + kr - m.YPadding/2
+				if rowIdx < 0 || rowIdx >= x.Rows {
+					continue
+				}
+				for kc := range kernel.Cols {
+					colIdx := gc*m.Stride + kc - m.XPadding/2
+					if colIdx < 0 || colIdx >= x.Cols {
+						continue
+					}
+					xGrad.Data[rowIdx*x.Cols+colIdx] += kernel.Data[kr*kernel.Cols+kc] * grad.Data[gr*grad.Cols+gc]
+				}
+			}
+		}
+	}
+
+	for i := range kernelGrad.Rows {
+		for j := range kernelGrad.Cols {
+			for gr := range grad.Rows {
+				rowIdx := gr*m.Stride + i - m.YPadding/2
+				if rowIdx < 0 || rowIdx >= x.Rows {
+					continue
+				}
+				for gc := range grad.Cols {
+					colIdx := gc*m.Stride + j - m.XPadding/2
+					if colIdx < 0 || colIdx >= x.Cols {
+						continue
+					}
+					kernelGrad.Data[i*kernelGrad.Cols+j] += x.Data[rowIdx*x.Cols+colIdx] * grad.Data[gr*grad.Cols+gc]
+				}
+			}
+		}
+	}
+	m.X.Backward(xGrad)
+	m.Kernel.Backward(kernelGrad)
+}
+func (m *ConvNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.XPadding = 0
+		m.YPadding = 0
+		m.X.Reset()
+		m.Kernel.Reset()
 	}
 }
