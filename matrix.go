@@ -186,3 +186,22 @@ func (m *Matrix) Reshape(rows, cols int) *Matrix {
 	copy(data, m.Data)
 	return NewMatrix(rows, cols, data)
 }
+
+func (m *Matrix) RowSum() *Matrix {
+	data := make([]float64, m.Rows)
+	for i := range m.Rows {
+		for j := range m.Cols {
+			data[i] += m.Data[i*m.Cols+j]
+		}
+	}
+	return NewMatrix(m.Rows, 1, data)
+}
+func (m *Matrix) ColSum() *Matrix {
+	data := make([]float64, m.Cols)
+	for i := range m.Cols {
+		for j := range m.Rows {
+			data[i] += m.Data[j*m.Cols+i]
+		}
+	}
+	return NewMatrix(1, m.Cols, data)
+}

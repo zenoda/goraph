@@ -418,6 +418,108 @@ func (m *ColSliceNode) Reset() {
 	}
 }
 
+type RowSumNode struct {
+	X     Node
+	Value *Matrix
+}
+
+func RowSum(x Node) *RowSumNode {
+	return &RowSumNode{
+		X:     x,
+		Value: nil,
+	}
+}
+func (m *RowSumNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.RowSum()
+	}
+	return m.Value
+}
+func (m *RowSumNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	dataX := make([]float64, x.Rows*x.Cols)
+	for i := range x.Rows {
+		for j := range x.Cols {
+			dataX[i*x.Cols+j] = grad.Data[i]
+		}
+	}
+	gradX := NewMatrix(x.Rows, x.Cols, dataX)
+	m.X.Backward(gradX)
+}
+func (m *RowSumNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+
+type ColSumNode struct {
+	X     Node
+	Value *Matrix
+}
+
+func ColSum(x Node) *ColSumNode {
+	return &ColSumNode{
+		X:     x,
+		Value: nil,
+	}
+}
+func (m *ColSumNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.ColSum()
+	}
+	return m.Value
+}
+func (m *ColSumNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	dataX := make([]float64, x.Rows*x.Cols)
+	for i := range x.Rows {
+		for j := range x.Cols {
+			dataX[i*x.Cols+j] = grad.Data[j]
+		}
+	}
+	gradX := NewMatrix(1, x.Cols, dataX)
+	m.X.Backward(gradX)
+}
+func (m *ColSumNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+
+type ScaleNode struct {
+	X     Node
+	Rate  float64
+	Value *Matrix
+}
+
+func Scale(x Node, rate float64) *ScaleNode {
+	return &ScaleNode{
+		X:     x,
+		Value: nil,
+	}
+}
+func (m *ScaleNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		m.Value = x.Scale(m.Rate)
+	}
+	return m.Value
+}
+func (m *ScaleNode) Backward(grad *Matrix) {
+	gradX := grad.Scale(m.Rate)
+	m.X.Backward(gradX)
+}
+func (m *ScaleNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+
 /*
 SigmoidNode defines a node that executes Sigmoid activation function.
 */
