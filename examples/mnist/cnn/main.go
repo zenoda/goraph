@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+
 	input := goraph.NewConstVariable(28, 28, 0)
 	kernel := goraph.NewRandomVariable(2, 2, rand.Float64)
 	bk := goraph.NewConstVariable(1, 1, 0.001)

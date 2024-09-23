@@ -13,59 +13,48 @@ func NewRandFunc(num int) func() float64 {
 	}
 }
 func main() {
-	input := goraph.NewConstVariable(10, 784, 0)
 	w1 := goraph.NewRandomVariable(784, 10, NewRandFunc(784))
 	b1 := goraph.NewConstVariable(1, 10, 0.1)
-	w2 := goraph.NewRandomVariable(10, 1, NewRandFunc(10))
-	b2 := goraph.NewConstVariable(1, 1, 0.1)
-	target := goraph.NewConstVariable(10, 1, 0)
-
-	var output goraph.Node
-	output = goraph.Multi(input, w1)
-	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1), b1))
-	output = goraph.ReLu(output)
-
-	output = goraph.Multi(output, w2)
-	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1), b2))
-	output = goraph.Sigmoid(output)
-
-	var loss goraph.Node
-	loss = goraph.MSELoss(output, target)
-
+	w2 := goraph.NewRandomVariable(10, 10, NewRandFunc(10))
+	b2 := goraph.NewConstVariable(1, 10, 0.1)
 	parameters := []*goraph.VariableNode{w1, b1, w2, b2}
-	optimizer := goraph.NewSGDOptimizer(parameters, 0.1, 0)
+	optimizer := goraph.NewSGDOptimizer(parameters, 0.001, 0)
 
+	builder := func() (input, target *goraph.VariableNode, output, loss goraph.Node) {
+		input = goraph.NewConstVariable(1, 784, 0)
+		target = goraph.NewConstVariable(1, 10, 0)
+
+		output = goraph.Multi(input, w1)
+		output = goraph.Add(output, b1)
+		output = goraph.ReLu(output)
+
+		output = goraph.Multi(output, w2)
+		output = goraph.Add(output, b2)
+		output = goraph.Softmax(output)
+
+		loss = goraph.CrossEntropyLoss(output, target)
+		return
+	}
+
+	nn := goraph.NewNeuralNetwork(builder, optimizer)
 	model := goraph.NewModel(parameters, nil)
 	model.Load("model.json")
-	inputs, targets := readSamples("train", 10)
-	for epoch := range 30 {
-		lossValue := goraph.NewConstMatrix(1, 1, 0)
-		for i := range inputs {
-			input.Value = inputs[i]
-			target.Value = targets[i]
-			lossValue = lossValue.Add(loss.Forward())
-			loss.Backward(nil)
-			optimizer.Step()
-			//fmt.Printf("Output:%v, Target:%v\n", output.Forward(), target.Value)
-			loss.Reset()
+	{
+		inputData, targetData := readSamples("train")
+		for epoch := range 30 {
+			lossValue := nn.Train(inputData, targetData, 20)
+			fmt.Printf("Epoch: %d, loss: %f\n", epoch, lossValue)
 		}
-		fmt.Printf("Epoch: %d, Loss: %v\n", epoch, lossValue.Scale(1/float64(len(inputs))))
 	}
 	model.Save("model.json")
-
-	inputs, targets = readSamples("test", 10)
-	lossValue := goraph.NewConstMatrix(1, 1, 0)
-	for i := range inputs {
-		input.Value = inputs[i]
-		target.Value = targets[i]
-		lossValue = lossValue.Add(loss.Forward())
-		fmt.Printf("Output:%v, Target:%v\n", output.Forward(), target.Value)
-		loss.Reset()
+	{
+		inputData, targetData := readSamples("test")
+		lossValue := nn.Evaluate(inputData, targetData)
+		fmt.Printf("Test, Loss: %v\n", lossValue)
 	}
-	fmt.Printf("Test, Loss: %v\n", lossValue.Scale(1/float64(len(inputs))))
 }
 
-func readSamples(sampleType string, batchSize int) (inputs, targets []*goraph.Matrix) {
+func readSamples(sampleType string) (inputData, targetData [][]float64) {
 	var imgFilePath, labelFilePath string
 	switch sampleType {
 	case "train":
@@ -83,16 +72,15 @@ func readSamples(sampleType string, batchSize int) (inputs, targets []*goraph.Ma
 	if err != nil {
 		panic(err)
 	}
-	for i := 0; i*batchSize < len(imgs); i++ {
-		var inputData, labelData []float64
-		for j := 0; j < batchSize; j++ {
-			for k := range imgs[i*batchSize+j] {
-				inputData = append(inputData, float64(imgs[i*batchSize+j][k])/256*0.9+0.1)
-			}
-			labelData = append(labelData, float64(labels[i*batchSize+j])/10)
+	for i := range imgs {
+		var imgData []float64
+		var labelData = make([]float64, 10)
+		for _, pixel := range imgs[i] {
+			imgData = append(imgData, float64(pixel)/256*0.9+0.1)
 		}
-		inputs = append(inputs, goraph.NewMatrix(batchSize, 784, inputData))
-		targets = append(targets, goraph.NewMatrix(batchSize, 1, labelData))
+		labelData[labels[i]] = 1
+		inputData = append(inputData, imgData)
+		targetData = append(targetData, labelData)
 	}
 	return
 }

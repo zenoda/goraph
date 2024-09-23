@@ -12,31 +12,30 @@ func NewRandFunc(num int) func() float64 {
 	}
 }
 func main() {
-	input := NewVariable(4, 2, []float64{0, 0, .9, .9, 0, .9, .9, 0})
 	w1 := NewRandomVariable(2, 5, NewRandFunc(2))
 	b1 := NewConstVariable(1, 5, 0.1)
 	w2 := NewRandomVariable(5, 1, NewRandFunc(5))
 	b2 := NewConstVariable(1, 1, 0.1)
-	target := NewVariable(4, 1, []float64{0, 0, .9, .9})
 
-	var output Node
-	output = Multi(input, w1)
-	output = Add(output, Multi(NewConstVariable(4, 1, 1), b1))
-	output = Tanh(output)
+	builder := func() (input, target *VariableNode, output, loss Node) {
+		input = NewConstVariable(1, 2, 0)
+		target = NewConstVariable(1, 1, 0)
+		output = Multi(input, w1)
+		output = Add(output, b1)
+		output = Tanh(output)
+		output = Multi(output, w2)
+		output = Add(output, b2)
+		output = ReLu(output)
+		loss = MSELoss(output, target)
+		return
+	}
+	optimizer := NewSGDOptimizer([]*VariableNode{w1, b1, w2, b2}, 0.2, 0)
+	nn := NewNeuralNetwork(builder, optimizer)
 
-	output = Multi(output, w2)
-	output = Add(output, Multi(NewConstVariable(4, 1, 1), b2))
-	output = ReLu(output)
-
-	var loss Node
-	loss = MSELoss(output, target)
-	optimizer := NewSGDOptimizer([]*VariableNode{w1, b1, w2, b2}, 0.1, 0)
-	for range 2000 {
-		outputValue := output.Forward()
-		lossValue := loss.Forward()
-		fmt.Printf("Loss: %v, Output: %v\n", lossValue, outputValue)
-		loss.Backward(nil)
-		optimizer.Step()
-		loss.Reset()
+	for range 1000 {
+		inputData := [][]float64{{0, 0}, {.9, .9}, {0, .9}, {.9, 0}}
+		targetData := [][]float64{{0}, {0}, {.9}, {.9}}
+		lossValue := nn.Train(inputData, targetData, 4)
+		fmt.Printf("Loss: %v\n", lossValue)
 	}
 }

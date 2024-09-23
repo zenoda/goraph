@@ -3,7 +3,7 @@ package goraph
 import "math"
 
 type Optimizer interface {
-	Step()
+	Step(batchSize int)
 	Reset()
 }
 
@@ -26,9 +26,10 @@ func NewSGDOptimizer(parameters []*VariableNode, learningRate, momentum float64)
 		Parameters:   parameters,
 	}
 }
-func (opt *SGDOptimizer) Step() {
+func (opt *SGDOptimizer) Step(batchSize int) {
 	for i, p := range opt.Parameters {
-		opt.Velocity[i] = opt.Velocity[i].Scale(opt.Momentum).Add(p.Gradient.Scale(1 - opt.Momentum))
+		grad := p.Gradient.Scale(1 / float64(batchSize))
+		opt.Velocity[i] = opt.Velocity[i].Scale(opt.Momentum).Add(grad.Scale(1 - opt.Momentum))
 		p.Value = p.Value.Sub(opt.Velocity[i].Scale(opt.LearningRate))
 	}
 }
@@ -71,11 +72,12 @@ func NewAdamOptimizer(parameters []*VariableNode, learningRate, beta1, beta2, ep
 	}
 }
 
-func (opt *AdamOptimizer) Step() {
+func (opt *AdamOptimizer) Step(batchSize int) {
 	for i, p := range opt.Parameters {
-		for j := range p.Gradient.Data {
-			m := opt.Beta1*opt.M[i].Data[j] + (1-opt.Beta1)*p.Gradient.Data[j]
-			v := opt.Beta2*opt.V[i].Data[j] + (1-opt.Beta2)*math.Pow(p.Gradient.Data[j], 2)
+		grad := p.Gradient.Scale(1 / float64(batchSize))
+		for j := range grad.Data {
+			m := opt.Beta1*opt.M[i].Data[j] + (1-opt.Beta1)*grad.Data[j]
+			v := opt.Beta2*opt.V[i].Data[j] + (1-opt.Beta2)*math.Pow(grad.Data[j], 2)
 			mHat := m / (1 - math.Pow(opt.Beta1, float64(opt.T)))
 			vHat := v / (1 - math.Pow(opt.Beta2, float64(opt.T)))
 			update := opt.LearningRate * mHat / (math.Sqrt(vHat) + opt.Eps)
