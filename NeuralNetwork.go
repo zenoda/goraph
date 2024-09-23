@@ -32,8 +32,8 @@ func (nn *NeuralNetwork) Train(inputData, targetData [][]float64, batchSize int)
 		for j := 0; j < realBatchSize; j++ {
 			losses[j].Reset()
 		}
-		lossValue /= float64(realBatchSize)
 	}
+	lossValue /= float64(len(inputData))
 	return
 }
 

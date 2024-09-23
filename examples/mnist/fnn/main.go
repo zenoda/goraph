@@ -18,7 +18,7 @@ func main() {
 	w2 := goraph.NewRandomVariable(10, 10, NewRandFunc(10))
 	b2 := goraph.NewConstVariable(1, 10, 0.1)
 	parameters := []*goraph.VariableNode{w1, b1, w2, b2}
-	optimizer := goraph.NewSGDOptimizer(parameters, 0.001, 0)
+	optimizer := goraph.NewSGDOptimizer(parameters, 0.01, 0.9)
 
 	builder := func() (input, target *goraph.VariableNode, output, loss goraph.Node) {
 		input = goraph.NewConstVariable(1, 784, 0)
@@ -42,7 +42,7 @@ func main() {
 	{
 		inputData, targetData := readSamples("train")
 		for epoch := range 30 {
-			lossValue := nn.Train(inputData, targetData, 20)
+			lossValue := nn.Train(inputData, targetData, 30)
 			fmt.Printf("Epoch: %d, loss: %f\n", epoch, lossValue)
 		}
 	}
