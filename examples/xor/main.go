@@ -12,20 +12,20 @@ func NewRandFunc(num int) func() float64 {
 	}
 }
 func main() {
-	input := NewVariable(4, 2, []float64{0, 0, .9, .9, 0, .9, .9, 0}, "input")
-	w1 := NewRandomVariable(2, 5, NewRandFunc(2), "w1")
-	b1 := NewConstVariable(1, 5, 0.1, "b1")
-	w2 := NewRandomVariable(5, 1, NewRandFunc(5), "w2")
-	b2 := NewConstVariable(1, 1, 0.1, "b2")
-	target := NewVariable(4, 1, []float64{0, 0, .9, .9}, "target")
+	input := NewVariable(4, 2, []float64{0, 0, .9, .9, 0, .9, .9, 0})
+	w1 := NewRandomVariable(2, 5, NewRandFunc(2))
+	b1 := NewConstVariable(1, 5, 0.1)
+	w2 := NewRandomVariable(5, 1, NewRandFunc(5))
+	b2 := NewConstVariable(1, 1, 0.1)
+	target := NewVariable(4, 1, []float64{0, 0, .9, .9})
 
 	var output Node
 	output = Multi(input, w1)
-	output = Add(output, Multi(NewConstVariable(4, 1, 1, "bb1"), b1))
+	output = Add(output, Multi(NewConstVariable(4, 1, 1), b1))
 	output = Tanh(output)
 
 	output = Multi(output, w2)
-	output = Add(output, Multi(NewConstVariable(4, 1, 1, "bb2"), b2))
+	output = Add(output, Multi(NewConstVariable(4, 1, 1), b2))
 	output = ReLu(output)
 
 	var loss Node

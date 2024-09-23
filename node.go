@@ -12,6 +12,7 @@ type Node interface {
 	Backward(grad *Matrix)
 	Forward() *Matrix
 	Reset()
+	Tag(name string) Node
 }
 
 /*
@@ -23,25 +24,22 @@ type VariableNode struct {
 	Gradient *Matrix `json:"-"`
 }
 
-func NewVariable(rows, cols int, data []float64, name string) *VariableNode {
+func NewVariable(rows, cols int, data []float64) *VariableNode {
 	return &VariableNode{
-		Name:     name,
 		Value:    NewMatrix(rows, cols, data),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
 }
 
-func NewConstVariable(rows, cols int, value float64, name string) *VariableNode {
+func NewConstVariable(rows, cols int, value float64) *VariableNode {
 	return &VariableNode{
-		Name:     name,
 		Value:    NewConstMatrix(rows, cols, value),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
 }
 
-func NewRandomVariable(rows, cols int, f func() float64, name string) *VariableNode {
+func NewRandomVariable(rows, cols int, f func() float64) *VariableNode {
 	return &VariableNode{
-		Name:     name,
 		Value:    NewRandomMatrix(rows, cols, f),
 		Gradient: NewConstMatrix(rows, cols, 0.0),
 	}
@@ -56,6 +54,10 @@ func (v *VariableNode) Backward(grad *Matrix) {
 func (v *VariableNode) Reset() {
 	v.Gradient = NewConstMatrix(v.Value.Rows, v.Value.Cols, 0.0)
 }
+func (v *VariableNode) Tag(name string) Node {
+	v.Name = name
+	return v
+}
 
 /*
 AddNode defines a node that performs matrix addition operations.
@@ -64,6 +66,7 @@ type AddNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func Add(x Node, y Node) *AddNode {
@@ -94,6 +97,10 @@ func (m *AddNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *AddNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 SubNode defines a node that performs matrix subtraction operations.
@@ -102,6 +109,7 @@ type SubNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func Sub(x Node, y Node) *SubNode {
@@ -129,6 +137,10 @@ func (m *SubNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *SubNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 MultiNode defines a node that performs matrix multiplication operations.
@@ -137,6 +149,7 @@ type MultiNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func Multi(x Node, y Node) *MultiNode {
@@ -169,6 +182,10 @@ func (m *MultiNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *MultiNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 MultiElementNode defines a node that performs matrix multiplication based on the
@@ -178,6 +195,7 @@ type MultiElementNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func MultiElement(x Node, y Node) *MultiElementNode {
@@ -213,11 +231,16 @@ func (m *MultiElementNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *MultiElementNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type DivElementNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func Div(x Node, y Node) *DivElementNode {
@@ -250,12 +273,17 @@ func (m *DivElementNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *DivElementNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type ReshapeNode struct {
 	X     Node
 	Rows  int
 	Cols  int
 	Value *Matrix
+	Name  string
 }
 
 func Reshape(x Node, rows, cols int) *ReshapeNode {
@@ -285,6 +313,10 @@ func (m *ReshapeNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *ReshapeNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 HConcatNode defines a node for matrix horizontal concatenation.
@@ -293,6 +325,7 @@ type HConcatNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func HConcat(x Node, y Node) *HConcatNode {
@@ -331,6 +364,10 @@ func (m *HConcatNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *HConcatNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 VConcatNode defines a node for matrix vertical concatenation.
@@ -339,6 +376,7 @@ type VConcatNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func VConcat(x Node, y Node) *VConcatNode {
@@ -372,6 +410,10 @@ func (m *VConcatNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *VConcatNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 RowSliceNode defines a node that performs matrix slicing along row direction.
@@ -380,6 +422,7 @@ type RowSliceNode struct {
 	X          Node
 	Start, End int
 	Value      *Matrix
+	Name       string
 }
 
 func RowSlice(x Node, start, end int) *RowSliceNode {
@@ -414,6 +457,10 @@ func (m *RowSliceNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *RowSliceNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 ColSliceNode defines a node that performs matrix slicing along the column direction.
@@ -422,6 +469,7 @@ type ColSliceNode struct {
 	X          Node
 	Start, End int
 	Value      *Matrix
+	Name       string
 }
 
 func ColSlice(x Node, start, end int) *ColSliceNode {
@@ -454,10 +502,15 @@ func (m *ColSliceNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *ColSliceNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type RowSumNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func RowSum(x Node) *RowSumNode {
@@ -490,10 +543,15 @@ func (m *RowSumNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *RowSumNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type ColSumNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func ColSum(x Node) *ColSumNode {
@@ -526,16 +584,22 @@ func (m *ColSumNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *ColSumNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type ScaleNode struct {
 	X     Node
 	Rate  float64
 	Value *Matrix
+	Name  string
 }
 
 func Scale(x Node, rate float64) *ScaleNode {
 	return &ScaleNode{
 		X:     x,
+		Rate:  rate,
 		Value: nil,
 	}
 }
@@ -556,6 +620,10 @@ func (m *ScaleNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *ScaleNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 SigmoidNode defines a node that executes Sigmoid activation function.
@@ -563,6 +631,7 @@ SigmoidNode defines a node that executes Sigmoid activation function.
 type SigmoidNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func Sigmoid(x Node) *SigmoidNode {
@@ -594,6 +663,10 @@ func (m *SigmoidNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *SigmoidNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 ReLuNode defines a node that executes ReLu activation function.
@@ -601,6 +674,7 @@ ReLuNode defines a node that executes ReLu activation function.
 type ReLuNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func ReLu(x Node) *ReLuNode {
@@ -642,6 +716,10 @@ func (m *ReLuNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *ReLuNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 TanhNode defines a node that executes Tanh activation function.
@@ -649,6 +727,7 @@ TanhNode defines a node that executes Tanh activation function.
 type TanhNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func Tanh(x Node) *TanhNode {
@@ -681,6 +760,10 @@ func (m *TanhNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *TanhNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 DropoutNode defines a node that performs Dropout operations.
@@ -689,6 +772,7 @@ type DropoutNode struct {
 	X     Node
 	P     float64 //Keep probability
 	Value *Matrix
+	Name  string
 }
 
 func Dropout(x Node, p float64) *DropoutNode {
@@ -729,6 +813,10 @@ func (m *DropoutNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *DropoutNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 SoftmaxNode defines a node that executes the Softmax activation function
@@ -736,6 +824,7 @@ SoftmaxNode defines a node that executes the Softmax activation function
 type SoftmaxNode struct {
 	X     Node
 	Value *Matrix
+	Name  string
 }
 
 func Softmax(x Node) *SoftmaxNode {
@@ -775,6 +864,10 @@ func (m *SoftmaxNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *SoftmaxNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 MSELossNode defines a node for calculating mean square error loss.
@@ -783,6 +876,7 @@ type MSELossNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func MSELoss(x Node, y Node) *MSELossNode {
@@ -836,6 +930,10 @@ func (m *MSELossNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *MSELossNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 CrossEntropyLossNode defines a node dedicated to calculating cross entropy
@@ -846,6 +944,7 @@ type CrossEntropyLossNode struct {
 	X     Node
 	Y     Node
 	Value *Matrix
+	Name  string
 }
 
 func CrossEntropyLoss(x Node, y Node) *CrossEntropyLossNode {
@@ -895,25 +994,30 @@ func (m *CrossEntropyLossNode) Reset() {
 		m.Y.Reset()
 	}
 }
+func (m *CrossEntropyLossNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 /*
 GradThresholdNode defines a processing node that, during forward propagation,
 does not perform any processing and directly passes the input to the next step.
 In backpropagation, it controls whether to continue propagation based on the set
-threshold. When the module of the gradient is less than the threshold,
+Threshold. When the module of the gradient is less than the Threshold,
 backpropagation will stop.
 */
 type GradThresholdNode struct {
 	X         Node
 	Value     *Matrix
-	threshold float64
+	Threshold float64
+	Name      string
 }
 
 func GradThreshold(x Node, threshold float64) *GradThresholdNode {
 	return &GradThresholdNode{
 		X:         x,
 		Value:     nil,
-		threshold: threshold,
+		Threshold: threshold,
 	}
 }
 func (m *GradThresholdNode) Forward() *Matrix {
@@ -928,7 +1032,7 @@ func (m *GradThresholdNode) Backward(grad *Matrix) {
 		mod += math.Pow(v, 2)
 	}
 	mod = math.Sqrt(mod)
-	if mod >= m.threshold {
+	if mod >= m.Threshold {
 		m.X.Backward(grad)
 	}
 }
@@ -938,6 +1042,10 @@ func (m *GradThresholdNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *GradThresholdNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type PoolNode struct {
 	X      Node
@@ -946,6 +1054,7 @@ type PoolNode struct {
 	Stride int
 	Value  *Matrix
 	Flags  []int
+	Name   string
 }
 
 func Pool(x Node, width, height, stride int) *PoolNode {
@@ -1023,6 +1132,10 @@ func (m *PoolNode) Reset() {
 		m.X.Reset()
 	}
 }
+func (m *PoolNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
 
 type ConvNode struct {
 	X        Node
@@ -1031,6 +1144,7 @@ type ConvNode struct {
 	Value    *Matrix
 	XPadding int
 	YPadding int
+	Name     string
 }
 
 func Conv(x Node, kernel Node, stride int) *ConvNode {
@@ -1140,4 +1254,8 @@ func (m *ConvNode) Reset() {
 		m.X.Reset()
 		m.Kernel.Reset()
 	}
+}
+func (m *ConvNode) Tag(name string) Node {
+	m.Name = name
+	return m
 }

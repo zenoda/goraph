@@ -13,20 +13,20 @@ func NewRandFunc(num int) func() float64 {
 	}
 }
 func main() {
-	input := goraph.NewConstVariable(10, 784, 0, "input")
-	w1 := goraph.NewRandomVariable(784, 10, NewRandFunc(784), "w1")
-	b1 := goraph.NewConstVariable(1, 10, 0.1, "b1")
-	w2 := goraph.NewRandomVariable(10, 1, NewRandFunc(10), "w2")
-	b2 := goraph.NewConstVariable(1, 1, 0.1, "b2")
-	target := goraph.NewConstVariable(10, 1, 0, "target")
+	input := goraph.NewConstVariable(10, 784, 0)
+	w1 := goraph.NewRandomVariable(784, 10, NewRandFunc(784))
+	b1 := goraph.NewConstVariable(1, 10, 0.1)
+	w2 := goraph.NewRandomVariable(10, 1, NewRandFunc(10))
+	b2 := goraph.NewConstVariable(1, 1, 0.1)
+	target := goraph.NewConstVariable(10, 1, 0)
 
 	var output goraph.Node
 	output = goraph.Multi(input, w1)
-	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1, "bb1"), b1))
+	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1), b1))
 	output = goraph.ReLu(output)
 
 	output = goraph.Multi(output, w2)
-	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1, "bb2"), b2))
+	output = goraph.Add(output, goraph.Multi(goraph.NewConstVariable(10, 1, 1), b2))
 	output = goraph.Sigmoid(output)
 
 	var loss goraph.Node

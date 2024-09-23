@@ -13,18 +13,18 @@ func NewRandFunc(dim int) func() float64 {
 	}
 }
 func main() {
-	input := goraph.NewConstVariable(28, 28, 0, "input")
-	w1 := goraph.NewRandomVariable(28, 56, NewRandFunc(28), "w1")
-	b1 := goraph.NewConstVariable(1, 56, 0.001, "b1")
-	rw := goraph.NewRandomVariable(56, 56, NewRandFunc(56), "rw")
-	w2 := goraph.NewRandomVariable(56, 10, NewRandFunc(56), "w2")
-	b2 := goraph.NewConstVariable(1, 10, 0.001, "b2")
-	target := goraph.NewConstVariable(1, 10, 0, "target")
+	input := goraph.NewConstVariable(28, 28, 0)
+	w1 := goraph.NewRandomVariable(28, 56, NewRandFunc(28))
+	b1 := goraph.NewConstVariable(1, 56, 0.001)
+	rw := goraph.NewRandomVariable(56, 56, NewRandFunc(56))
+	w2 := goraph.NewRandomVariable(56, 10, NewRandFunc(56))
+	b2 := goraph.NewConstVariable(1, 10, 0.001)
+	target := goraph.NewConstVariable(1, 10, 0)
 
 	var output goraph.Node
 	for i := range 28 {
 		if i == 0 {
-			output = goraph.NewConstVariable(1, 56, 0, "hidden")
+			output = goraph.NewConstVariable(1, 56, 0)
 		}
 		hi := goraph.Multi(goraph.RowSlice(input, i, i+1), w1)
 		ho := goraph.Multi(output, rw)
