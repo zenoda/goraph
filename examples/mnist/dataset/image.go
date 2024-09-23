@@ -1,4 +1,4 @@
-package main
+package dataset
 
 import (
 	"encoding/binary"
@@ -94,4 +94,35 @@ func readImageFile(r io.Reader, e error) (imgs []RawImage, err error) {
 		}
 	}
 	return imgs, nil
+}
+
+func ReadSamples(sampleType string) (inputData, targetData [][]float64) {
+	var imgFilePath, labelFilePath string
+	switch sampleType {
+	case "train":
+		imgFilePath = "../dataset/train-images-idx3-ubyte"
+		labelFilePath = "../dataset/train-labels-idx1-ubyte"
+	case "test":
+		imgFilePath = "../dataset/t10k-images-idx3-ubyte"
+		labelFilePath = "../dataset/t10k-labels-idx1-ubyte"
+	}
+	imgs, err := readImageFile(os.Open(imgFilePath))
+	if err != nil {
+		panic(err)
+	}
+	labels, err := readLabelFile(os.Open(labelFilePath))
+	if err != nil {
+		panic(err)
+	}
+	for i := range imgs {
+		var imgData []float64
+		var labelData = make([]float64, 10)
+		for _, pixel := range imgs[i] {
+			imgData = append(imgData, float64(pixel)/256*0.9+0.1)
+		}
+		labelData[labels[i]] = 1
+		inputData = append(inputData, imgData)
+		targetData = append(targetData, labelData)
+	}
+	return
 }
