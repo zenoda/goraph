@@ -181,6 +181,14 @@ func (m *Matrix) MultiElement(other *Matrix) (result *Matrix) {
 	return NewMatrix(m.Rows, m.Cols, data)
 }
 
+func (m *Matrix) DivElement(other *Matrix) *Matrix {
+	data := make([]float64, m.Rows*m.Cols)
+	for i := range data {
+		data[i] = m.Data[i] / other.Data[i]
+	}
+	return NewMatrix(m.Rows, m.Cols, data)
+}
+
 func (m *Matrix) Reshape(rows, cols int) *Matrix {
 	data := make([]float64, rows*cols)
 	copy(data, m.Data)

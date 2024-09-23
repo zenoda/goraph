@@ -214,6 +214,43 @@ func (m *MultiElementNode) Reset() {
 	}
 }
 
+type DivElementNode struct {
+	X     Node
+	Y     Node
+	Value *Matrix
+}
+
+func Div(x Node, y Node) *DivElementNode {
+	return &DivElementNode{
+		X:     x,
+		Y:     y,
+		Value: nil,
+	}
+}
+func (m *DivElementNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		y := m.Y.Forward()
+		m.Value = x.DivElement(y)
+	}
+	return m.Value
+}
+func (m *DivElementNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	y := m.Y.Forward()
+	gradX := grad.DivElement(y)
+	gradY := grad.MultiElement(x)
+	m.X.Backward(gradX)
+	m.Y.Backward(gradY)
+}
+func (m *DivElementNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+		m.Y.Reset()
+	}
+}
+
 type ReshapeNode struct {
 	X     Node
 	Rows  int
