@@ -1,6 +1,8 @@
 package goraph
 
-import "sync"
+import (
+	"sync"
+)
 
 type NeuralNetwork struct {
 	buildFunc func() (input, target *VariableNode, output, loss Node)
@@ -17,15 +19,18 @@ func (nn *NeuralNetwork) Train(inputData, targetData [][]float64, batchSize int)
 	for i := 0; i*batchSize < len(inputData); i++ {
 		realBatchSize := min(len(inputData)-i*batchSize, batchSize)
 		var wg sync.WaitGroup
+		var mu sync.Mutex
 		for j := 0; j < realBatchSize; j++ {
 			wg.Add(1)
-			go func(batch, idx int) {
+			go func(batch, idx, batchSize int) {
 				inputs[idx].Value = NewMatrix(inputs[idx].Value.Rows, inputs[idx].Value.Cols, inputData[batch*batchSize+idx])
 				targets[idx].Value = NewMatrix(targets[idx].Value.Rows, targets[idx].Value.Cols, targetData[batch*batchSize+idx])
+				mu.Lock()
 				lossValue += losses[idx].Forward().Data[0]
+				mu.Unlock()
 				losses[idx].Backward(nil)
 				wg.Done()
-			}(i, j)
+			}(i, j, batchSize)
 		}
 		wg.Wait()
 		nn.optimizer.Step(realBatchSize)
@@ -37,11 +42,13 @@ func (nn *NeuralNetwork) Train(inputData, targetData [][]float64, batchSize int)
 	return
 }
 
-func (nn *NeuralNetwork) Evaluate(inputData, targetData [][]float64) (lossValue float64) {
-	input, target, _, loss := nn.buildFunc()
+func (nn *NeuralNetwork) Evaluate(inputData, targetData [][]float64) (lossValue float64, outputData [][]float64) {
+	input, target, output, loss := nn.buildFunc()
+	outputData = make([][]float64, len(inputData))
 	for i := range inputData {
 		input.Value = NewMatrix(input.Value.Rows, input.Value.Cols, inputData[i])
 		target.Value = NewMatrix(target.Value.Rows, target.Value.Cols, targetData[i])
+		outputData[i] = output.Forward().Data
 		lossValue += loss.Forward().Data[0]
 		loss.Reset()
 	}

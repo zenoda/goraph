@@ -41,7 +41,7 @@ func main() {
 	model.Load("model.json")
 	{
 		inputData, targetData := dataset.ReadSamples("train")
-		for epoch := range 30 {
+		for epoch := range 10 {
 			lossValue := nn.Train(inputData, targetData, 30)
 			fmt.Printf("Epoch: %d, loss: %f\n", epoch, lossValue)
 		}
@@ -49,7 +49,10 @@ func main() {
 	model.Save("model.json")
 	{
 		inputData, targetData := dataset.ReadSamples("test")
-		lossValue := nn.Evaluate(inputData, targetData)
+		lossValue, outputData := nn.Evaluate(inputData, targetData)
+		for i := range 10 {
+			fmt.Printf("Output: %v, Target: %v\n", outputData[i], targetData[i])
+		}
 		fmt.Printf("Test, Loss: %v\n", lossValue)
 	}
 }
