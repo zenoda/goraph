@@ -155,8 +155,8 @@ func (m *Matrix) RowSlice(start, end int) *Matrix {
 }
 
 func (m *Matrix) ColSlice(start, end int) *Matrix {
-	if start < end {
-		panic("start must be greater than end")
+	if start >= end {
+		panic("start must be less than end")
 	}
 	if start >= m.Cols {
 		panic("start must be less than the number of cols")
