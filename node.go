@@ -278,6 +278,39 @@ func (m *DivElementNode) Tag(name string) Node {
 	return m
 }
 
+type TransNode struct {
+	X     Node
+	Value *Matrix
+	Name  string
+}
+
+func Trans(x Node) *TransNode {
+	return &TransNode{
+		X:     x,
+		Value: nil,
+	}
+}
+func (m *TransNode) Forward() *Matrix {
+	if m.Value == nil {
+		m.Value = m.X.Forward().Trans()
+	}
+	return m.Value
+}
+func (m *TransNode) Backward(grad *Matrix) {
+	gradX := grad.Trans()
+	m.X.Backward(gradX)
+}
+func (m *TransNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *TransNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
+
 type ReshapeNode struct {
 	X     Node
 	Rows  int
@@ -575,7 +608,7 @@ func (m *ColSumNode) Backward(grad *Matrix) {
 			dataX[i*x.Cols+j] = grad.Data[j]
 		}
 	}
-	gradX := NewMatrix(1, x.Cols, dataX)
+	gradX := NewMatrix(x.Rows, x.Cols, dataX)
 	m.X.Backward(gradX)
 }
 func (m *ColSumNode) Reset() {
