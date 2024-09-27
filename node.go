@@ -774,6 +774,9 @@ func (m *TanhNode) Forward() *Matrix {
 		data := make([]float64, x.Rows*x.Cols)
 		for i := range data {
 			data[i] = (math.Exp(x.Data[i]) - math.Exp(-x.Data[i])) / (math.Exp(x.Data[i]) + math.Exp(-x.Data[i]))
+			if math.IsNaN(data[i]) {
+				panic("The item is NaN.")
+			}
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
@@ -874,7 +877,16 @@ func (m *SoftmaxNode) Forward() *Matrix {
 			values := make([]float64, x.Cols)
 			for j := range x.Cols {
 				values[j] = math.Exp(x.Data[i*x.Cols+j])
+				if math.IsInf(values[j], 0) {
+					panic("The value is infinity.")
+				}
+				if math.IsNaN(values[j]) {
+					panic("The value is NaN.")
+				}
 				sum += values[j]
+			}
+			if sum == 0.0 {
+				panic("Value of sum must not be 0.")
 			}
 			for j, v := range values {
 				data[i*x.Cols+j] = v / sum
@@ -1010,9 +1022,17 @@ func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
 	dataX := make([]float64, x.Rows*x.Cols)
 	for i := range dataX {
 		if y.Data[i] == 1.0 {
-			dataX[i] = -1.0 / x.Data[i]
+			if x.Data[i] == 0.0 {
+				dataX[i] = -1.0 / 0.001
+			} else {
+				dataX[i] = -1.0 / x.Data[i]
+			}
 		} else {
-			dataX[i] = 1.0 / (1.0 - x.Data[i])
+			if 1.0-x.Data[i] == 0.0 {
+				dataX[i] = 1.0 / 0.001
+			} else {
+				dataX[i] = 1.0 / (1.0 - x.Data[i])
+			}
 		}
 	}
 	gradX := NewMatrix(x.Rows, x.Cols, dataX)

@@ -1,6 +1,9 @@
 package goraph
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 type Scaler interface {
 	Fit(data [][]float64)
@@ -60,61 +63,113 @@ func (m *MinMaxScaler) Transform(data [][]float64) [][]float64 {
 	return result
 }
 
-//
-//type ZScoreScaler struct {
-//	Mean         []float64 `json:"mean"`
-//	StdDeviation []float64 `json:"stdDeviation"`
-//	Groups       [][]int   `json:"-"`
-//}
-//
-//func NewZScoreScaler(dim int, groups [][]int) *ZScoreScaler {
-//	mean := make([]float64, dim)
-//	stdDeviation := make([]float64, dim)
-//	return &ZScoreScaler{
-//		Mean:         mean,
-//		StdDeviation: stdDeviation,
-//		Groups:       groups,
-//	}
-//}
-//
-//func (m *ZScoreScaler) Fit(data *Matrix) {
-//	for _, group := range m.Groups {
-//		mean := 0.0
-//		for i := range data.Rows {
-//			for _, col := range group {
-//				mean += data.Data[i*data.Cols+col]
-//			}
-//		}
-//		mean /= float64(data.Rows * len(group))
-//		for _, col := range group {
-//			m.Mean[col] = mean
-//		}
-//	}
-//	for _, group := range m.Groups {
-//		stdDeviation := 0.0
-//		for i := range data.Rows {
-//			for _, col := range group {
-//				stdDeviation += math.Pow(data.Data[i*data.Cols+col]-m.Mean[col], 2)
-//			}
-//		}
-//		stdDeviation = math.Sqrt(stdDeviation / float64(data.Rows*len(group)))
-//		for _, col := range group {
-//			m.StdDeviation[col] = stdDeviation
-//		}
-//	}
-//}
-//
-//func (m *ZScoreScaler) Transform(data *Matrix) *Matrix {
-//	result := NewConstMatrix(data.Rows, data.Cols, 0)
-//	for i, v := range data.Data {
-//		result.Data[i] = v
-//	}
-//	for _, group := range m.Groups {
-//		for i := range data.Rows {
-//			for _, col := range group {
-//				result.Data[i*data.Cols+col] = (data.Data[i*data.Cols+col] - m.Mean[col]) / m.StdDeviation[col]
-//			}
-//		}
-//	}
-//	return result
-//}
+type RobustScaler struct {
+	Median []float64 `json:"median"`
+	IQR    []float64 `json:"IQR"`
+	Groups [][]int   `json:"groups"`
+	Dim    int       `json:"dim"`
+}
+
+func NewRobustScaler(dim int, groups [][]int) *RobustScaler {
+	return &RobustScaler{
+		Groups: groups,
+		Dim:    dim,
+		Median: make([]float64, len(groups)),
+		IQR:    make([]float64, len(groups)),
+	}
+}
+func (m *RobustScaler) Fit(data [][]float64) {
+	groupedData := make([][]float64, len(m.Groups))
+	for i, group := range m.Groups {
+		for _, item := range data {
+			for row := range len(item) / m.Dim {
+				for _, col := range group {
+					groupedData[i] = append(groupedData[i], item[row*m.Dim+col])
+				}
+			}
+		}
+	}
+	for i := range groupedData {
+		sort.Float64s(groupedData[i])
+		m.Median[i] = groupedData[i][int(float64(len(groupedData[i]))*0.5)]
+		m.IQR[i] = groupedData[i][int(float64(len(groupedData[i]))*0.75)] - groupedData[i][int(float64(len(groupedData[i]))*0.25)]
+	}
+}
+func (m *RobustScaler) Transform(data [][]float64) [][]float64 {
+	result := make([][]float64, len(data))
+	for i := range result {
+		result[i] = make([]float64, len(data[i]))
+		copy(result[i], data[i])
+	}
+	for i, group := range m.Groups {
+		for idx, item := range data {
+			for row := range len(item) / m.Dim {
+				for _, col := range group {
+					result[idx][row*m.Dim+col] = (data[idx][row*m.Dim+col] - m.Median[i]) / m.IQR[i]
+				}
+			}
+		}
+	}
+	return result
+}
+
+type ZScoreScaler struct {
+	Mean         []float64 `json:"mean"`
+	StdDeviation []float64 `json:"stdDeviation"`
+	Groups       [][]int   `json:"groups"`
+	Dim          int       `json:"dim"`
+}
+
+func NewZScoreScaler(dim int, groups [][]int) *ZScoreScaler {
+	return &ZScoreScaler{
+		Mean:         make([]float64, len(groups)),
+		StdDeviation: make([]float64, len(groups)),
+		Groups:       groups,
+		Dim:          dim,
+	}
+}
+
+func (m *ZScoreScaler) Fit(data [][]float64) {
+	groupedData := make([][]float64, len(m.Groups))
+	for i, group := range m.Groups {
+		for _, item := range data {
+			for row := range len(item) / m.Dim {
+				for _, col := range group {
+					groupedData[i] = append(groupedData[i], item[row*m.Dim+col])
+				}
+			}
+		}
+	}
+	for i := range groupedData {
+		mean := 0.0
+		for j := range groupedData[i] {
+			mean += groupedData[i][j]
+		}
+		mean /= float64(len(groupedData[i]))
+		stdDeviation := 0.0
+		for j := range groupedData[i] {
+			stdDeviation += math.Pow(groupedData[i][j]-mean, 2)
+		}
+		stdDeviation = math.Sqrt(stdDeviation / float64(len(groupedData[i])))
+		m.Mean[i] = mean
+		m.StdDeviation[i] = stdDeviation
+	}
+}
+
+func (m *ZScoreScaler) Transform(data [][]float64) [][]float64 {
+	result := make([][]float64, len(data))
+	for i, item := range data {
+		result[i] = make([]float64, len(item))
+		copy(result[i], item)
+	}
+	for i, group := range m.Groups {
+		for j, item := range data {
+			for row := range len(item) / m.Dim {
+				for _, col := range group {
+					result[j][row*m.Dim+col] = (data[j][row*m.Dim+col] - m.Mean[i]) / m.StdDeviation[i]
+				}
+			}
+		}
+	}
+	return result
+}
