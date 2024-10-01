@@ -278,6 +278,48 @@ func (m *DivElementNode) Tag(name string) Node {
 	return m
 }
 
+type LogNode struct {
+	X     Node
+	Value *Matrix
+	Name  string
+}
+
+func Log(x Node) *LogNode {
+	return &LogNode{
+		X:     x,
+		Value: nil,
+	}
+}
+func (m *LogNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range data {
+			data[i] = math.Log(x.Data[i])
+		}
+		m.Value = NewMatrix(x.Rows, x.Cols, data)
+	}
+	return m.Value
+}
+func (m *LogNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	gradX := NewConstMatrix(x.Rows, x.Cols, 0)
+	for i := range x.Data {
+		gradX.Data[i] = grad.Data[i] / x.Data[i]
+	}
+	m.X.Backward(gradX)
+}
+func (m *LogNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *LogNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
+
 type TransNode struct {
 	X     Node
 	Value *Matrix
@@ -654,6 +696,56 @@ func (m *ScaleNode) Reset() {
 	}
 }
 func (m *ScaleNode) Tag(name string) Node {
+	m.Name = name
+	return m
+}
+
+type ValueThresholdNode struct {
+	X        Node
+	Value    *Matrix
+	MinValue float64
+	MaxValue float64
+	Name     string
+}
+
+func ValueThreshold(x Node, minVal, maxVal float64) *ValueThresholdNode {
+	return &ValueThresholdNode{
+		X:        x,
+		Value:    nil,
+		MinValue: minVal,
+		MaxValue: maxVal,
+	}
+}
+func (m *ValueThresholdNode) Forward() *Matrix {
+	if m.Value == nil {
+		x := m.X.Forward()
+		data := make([]float64, x.Rows*x.Cols)
+		for i := range x.Data {
+			data[i] = min(m.MaxValue, max(m.MinValue, x.Data[i]))
+		}
+		m.Value = NewMatrix(x.Rows, x.Cols, data)
+	}
+	return m.Value
+}
+func (m *ValueThresholdNode) Backward(grad *Matrix) {
+	x := m.X.Forward()
+	gradX := NewConstMatrix(x.Rows, x.Cols, 0)
+	for i := range grad.Data {
+		if x.Data[i] == m.MinValue || x.Data[i] == m.MaxValue {
+			gradX.Data[i] = 0
+		} else {
+			gradX.Data[i] = grad.Data[i]
+		}
+	}
+	m.X.Backward(gradX)
+}
+func (m *ValueThresholdNode) Reset() {
+	if m.Value != nil {
+		m.Value = nil
+		m.X.Reset()
+	}
+}
+func (m *ValueThresholdNode) Tag(name string) Node {
 	m.Name = name
 	return m
 }
