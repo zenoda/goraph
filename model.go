@@ -8,13 +8,13 @@ import (
 
 type Model struct {
 	Parameters []*VariableNode `json:"parameters"`
-	Scaler     Scaler          `json:"scaler"`
+	Scalers    []Scaler        `json:"scalers"`
 }
 
-func NewModel(parameters []*VariableNode, scaler Scaler) *Model {
+func NewModel(parameters []*VariableNode, scalers []Scaler) *Model {
 	return &Model{
 		Parameters: parameters,
-		Scaler:     scaler,
+		Scalers:    scalers,
 	}
 }
 
@@ -43,5 +43,5 @@ func (m *Model) Load(filePath string) error {
 }
 
 func (m *Model) String() string {
-	return fmt.Sprintf("Parameters: %v, Scaler: %v", m.Parameters, m.Scaler)
+	return fmt.Sprintf("Parameters: %v, Scaler: %v", m.Parameters, m.Scalers)
 }
