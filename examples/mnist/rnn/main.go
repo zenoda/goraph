@@ -54,7 +54,7 @@ func main() {
 			target.Value = trainTargets[i]
 			lossValue = lossValue.Add(loss.Forward())
 			loss.Backward(nil)
-			optimizer.Step()
+			optimizer.Step(1)
 			loss.Reset()
 			fmt.Printf("epoch %d: %d%%, loss value: %f\r", epoch, (i+1)*100/len(trainInputs), lossValue.Scale(1/float64(i+1)).Data)
 		}

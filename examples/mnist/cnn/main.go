@@ -51,7 +51,7 @@ func main() {
 
 	{
 		inputData, targetData := dataset.ReadSamples("test")
-		lossVal := nn.Evaluate(inputData, targetData)
+		lossVal, _ := nn.Evaluate(inputData, targetData)
 		fmt.Printf("Test, Loss: %v\n", lossVal)
 	}
 }
