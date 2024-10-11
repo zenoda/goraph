@@ -1,3 +1,3 @@
-module goraph
+module github.com/zenoda/goraph
 
-go 1.22
+go 1.23.1

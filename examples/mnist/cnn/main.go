@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"goraph"
-	"goraph/examples/mnist/dataset"
+	"github.com/zenoda/goraph"
 	"math/rand/v2"
+	"mnist/dataset"
 )
 
 func main() {
