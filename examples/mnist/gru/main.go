@@ -63,7 +63,7 @@ func main() {
 	optimizer := goraph.NewAdamOptimizer(parameters, 0.001, 0.9, 0.999, 1e-8)
 	//optimizer := goraph.NewSGDOptimizer(parameters, 0.001, 0.9)
 
-	model := goraph.NewModel(parameters, nil)
+	model := goraph.NewModel(parameters, nil, nil)
 	model.Load("model.json")
 	trainInputs, trainTargets := readSamples("train")
 	for epoch := range 1 {

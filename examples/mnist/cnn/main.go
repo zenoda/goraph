@@ -37,7 +37,7 @@ func main() {
 
 	nn := goraph.NewNeuralNetwork(builder, optimizer)
 
-	model := goraph.NewModel(parameters, nil)
+	model := goraph.NewModel(parameters, nil, nil)
 	model.Load("model.json")
 
 	{

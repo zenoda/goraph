@@ -7,14 +7,16 @@ import (
 )
 
 type Model struct {
-	Parameters []*VariableNode `json:"parameters"`
-	Scalers    []Scaler        `json:"scalers"`
+	Parameters    []*VariableNode `json:"parameters"`
+	InputScalers  []Scaler        `json:"input_scalers"`
+	TargetScalers []Scaler        `json:"target_scalers"`
 }
 
-func NewModel(parameters []*VariableNode, scalers []Scaler) *Model {
+func NewModel(parameters []*VariableNode, inputScalers, targetScalers []Scaler) *Model {
 	return &Model{
-		Parameters: parameters,
-		Scalers:    scalers,
+		Parameters:    parameters,
+		InputScalers:  inputScalers,
+		TargetScalers: targetScalers,
 	}
 }
 
@@ -43,5 +45,5 @@ func (m *Model) Load(filePath string) error {
 }
 
 func (m *Model) String() string {
-	return fmt.Sprintf("Parameters: %v, Scaler: %v", m.Parameters, m.Scalers)
+	return fmt.Sprintf("Parameters: %v, InputScalers: %v, TargetScalers: %v", m.Parameters, m.InputScalers, m.TargetScalers)
 }
