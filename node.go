@@ -1346,17 +1346,17 @@ func (m *PoolNode) Forward() *Matrix {
 		var xPadding, xSteps, yPadding, ySteps int
 		if (x.Cols-m.Width)%m.Stride == 0 {
 			xPadding = 0
-			xSteps = (x.Cols - m.Width) / m.Stride
+			xSteps = (x.Cols-m.Width)/m.Stride + 1
 		} else {
 			xPadding = m.Stride - (x.Cols-m.Width)%m.Stride
-			xSteps = (x.Cols - m.Width + xPadding) / m.Stride
+			xSteps = (x.Cols-m.Width+xPadding)/m.Stride + 1
 		}
 		if (x.Rows-m.Height)%m.Stride == 0 {
 			yPadding = 0
-			ySteps = (x.Rows - m.Height) / m.Stride
+			ySteps = (x.Rows-m.Height)/m.Stride + 1
 		} else {
 			yPadding = m.Stride - (x.Rows-m.Height)%m.Stride
-			ySteps = (x.Rows - m.Height + yPadding) / m.Stride
+			ySteps = (x.Rows-m.Height+yPadding)/m.Stride + 1
 		}
 		data := make([]float64, xSteps*ySteps)
 		m.Flags = make([]int, xSteps*ySteps)
