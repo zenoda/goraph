@@ -20,19 +20,21 @@ func (nn *NeuralNetwork) Train(inputData, targetData [][]float64, batchSize int)
 		realBatchSize := min(len(inputData)-i*batchSize, batchSize)
 		var wg sync.WaitGroup
 		var mu sync.Mutex
+		var lossBatch float64
 		for j := 0; j < realBatchSize; j++ {
 			wg.Add(1)
 			go func(batch, idx, batchSize int) {
 				inputs[idx].Value = NewMatrix(inputs[idx].Value.Rows, inputs[idx].Value.Cols, inputData[batch*batchSize+idx])
 				targets[idx].Value = NewMatrix(targets[idx].Value.Rows, targets[idx].Value.Cols, targetData[batch*batchSize+idx])
 				mu.Lock()
-				lossValue += losses[idx].Forward().Data[0]
+				lossBatch += losses[idx].Forward().Data[0]
 				mu.Unlock()
 				losses[idx].Backward(nil)
 				wg.Done()
 			}(i, j, batchSize)
 		}
 		wg.Wait()
+		lossValue += lossBatch / float64(realBatchSize)
 		nn.optimizer.Step(realBatchSize)
 		for j := 0; j < realBatchSize; j++ {
 			losses[j].Reset()
