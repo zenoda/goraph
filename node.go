@@ -3,6 +3,7 @@ package goraph
 import (
 	"math"
 	"math/rand/v2"
+	"sync"
 )
 
 /*
@@ -19,9 +20,10 @@ type Node interface {
 VariableNode defines a variable node.
 */
 type VariableNode struct {
-	Name     string  `json:"name"`
-	Value    *Matrix `json:"value"`
-	Gradient *Matrix `json:"-"`
+	Name          string  `json:"name"`
+	Value         *Matrix `json:"value"`
+	Gradient      *Matrix `json:"-"`
+	gradientMutex sync.Mutex
 }
 
 func NewVariable(rows, cols int, data []float64) *VariableNode {
@@ -49,10 +51,14 @@ func (v *VariableNode) Forward() *Matrix {
 	return v.Value
 }
 func (v *VariableNode) Backward(grad *Matrix) {
+	v.gradientMutex.Lock()
 	v.Gradient = v.Gradient.Add(grad)
+	v.gradientMutex.Unlock()
 }
 func (v *VariableNode) Reset() {
+	v.gradientMutex.Lock()
 	v.Gradient = NewConstMatrix(v.Value.Rows, v.Value.Cols, 0.0)
+	v.gradientMutex.Unlock()
 }
 func (v *VariableNode) Tag(name string) Node {
 	v.Name = name
@@ -63,10 +69,11 @@ func (v *VariableNode) Tag(name string) Node {
 AddNode defines a node that performs matrix addition operations.
 */
 type AddNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Add(x Node, y Node) *AddNode {
@@ -77,11 +84,13 @@ func Add(x Node, y Node) *AddNode {
 }
 
 func (m *AddNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.Add(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -91,11 +100,13 @@ func (m *AddNode) Backward(grad *Matrix) {
 }
 
 func (m *AddNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *AddNode) Tag(name string) Node {
 	m.Name = name
@@ -106,10 +117,11 @@ func (m *AddNode) Tag(name string) Node {
 SubNode defines a node that performs matrix subtraction operations.
 */
 type SubNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Sub(x Node, y Node) *SubNode {
@@ -119,11 +131,13 @@ func Sub(x Node, y Node) *SubNode {
 	}
 }
 func (m *SubNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.Sub(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *SubNode) Backward(grad *Matrix) {
@@ -131,11 +145,13 @@ func (m *SubNode) Backward(grad *Matrix) {
 	m.Y.Backward(grad.Negate())
 }
 func (m *SubNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *SubNode) Tag(name string) Node {
 	m.Name = name
@@ -146,10 +162,11 @@ func (m *SubNode) Tag(name string) Node {
 MultiNode defines a node that performs matrix multiplication operations.
 */
 type MultiNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Multi(x Node, y Node) *MultiNode {
@@ -160,11 +177,13 @@ func Multi(x Node, y Node) *MultiNode {
 }
 
 func (m *MultiNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.Multi(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -176,11 +195,13 @@ func (m *MultiNode) Backward(grad *Matrix) {
 }
 
 func (m *MultiNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *MultiNode) Tag(name string) Node {
 	m.Name = name
@@ -192,10 +213,11 @@ MultiElementNode defines a node that performs matrix multiplication based on the
 corresponding elements.
 */
 type MultiElementNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func MultiElement(x Node, y Node) *MultiElementNode {
@@ -205,11 +227,13 @@ func MultiElement(x Node, y Node) *MultiElementNode {
 	}
 }
 func (m *MultiElementNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.MultiElement(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *MultiElementNode) Backward(grad *Matrix) {
@@ -225,11 +249,13 @@ func (m *MultiElementNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *MultiElementNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *MultiElementNode) Tag(name string) Node {
 	m.Name = name
@@ -237,10 +263,11 @@ func (m *MultiElementNode) Tag(name string) Node {
 }
 
 type DivElementNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Div(x Node, y Node) *DivElementNode {
@@ -251,11 +278,13 @@ func Div(x Node, y Node) *DivElementNode {
 	}
 }
 func (m *DivElementNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.DivElement(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *DivElementNode) Backward(grad *Matrix) {
@@ -267,11 +296,13 @@ func (m *DivElementNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *DivElementNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *DivElementNode) Tag(name string) Node {
 	m.Name = name
@@ -279,9 +310,10 @@ func (m *DivElementNode) Tag(name string) Node {
 }
 
 type LogNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Log(x Node) *LogNode {
@@ -291,6 +323,7 @@ func Log(x Node) *LogNode {
 	}
 }
 func (m *LogNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -299,6 +332,7 @@ func (m *LogNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *LogNode) Backward(grad *Matrix) {
@@ -310,10 +344,12 @@ func (m *LogNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *LogNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *LogNode) Tag(name string) Node {
 	m.Name = name
@@ -321,9 +357,10 @@ func (m *LogNode) Tag(name string) Node {
 }
 
 type TransNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Trans(x Node) *TransNode {
@@ -333,9 +370,11 @@ func Trans(x Node) *TransNode {
 	}
 }
 func (m *TransNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		m.Value = m.X.Forward().Trans()
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *TransNode) Backward(grad *Matrix) {
@@ -343,10 +382,12 @@ func (m *TransNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *TransNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *TransNode) Tag(name string) Node {
 	m.Name = name
@@ -354,11 +395,12 @@ func (m *TransNode) Tag(name string) Node {
 }
 
 type ReshapeNode struct {
-	X     Node
-	Rows  int
-	Cols  int
-	Value *Matrix
-	Name  string
+	X          Node
+	Rows       int
+	Cols       int
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Reshape(x Node, rows, cols int) *ReshapeNode {
@@ -370,10 +412,12 @@ func Reshape(x Node, rows, cols int) *ReshapeNode {
 	}
 }
 func (m *ReshapeNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.Reshape(m.Rows, m.Cols)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ReshapeNode) Backward(grad *Matrix) {
@@ -383,10 +427,12 @@ func (m *ReshapeNode) Backward(grad *Matrix) {
 	m.X.Backward(xGrad)
 }
 func (m *ReshapeNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ReshapeNode) Tag(name string) Node {
 	m.Name = name
@@ -397,10 +443,11 @@ func (m *ReshapeNode) Tag(name string) Node {
 HConcatNode defines a node for matrix horizontal concatenation.
 */
 type HConcatNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func HConcat(x Node, y Node) *HConcatNode {
@@ -411,11 +458,13 @@ func HConcat(x Node, y Node) *HConcatNode {
 }
 
 func (m *HConcatNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.HConcat(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -433,11 +482,13 @@ func (m *HConcatNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *HConcatNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *HConcatNode) Tag(name string) Node {
 	m.Name = name
@@ -448,10 +499,11 @@ func (m *HConcatNode) Tag(name string) Node {
 VConcatNode defines a node for matrix vertical concatenation.
 */
 type VConcatNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func VConcat(x Node, y Node) *VConcatNode {
@@ -461,11 +513,13 @@ func VConcat(x Node, y Node) *VConcatNode {
 	}
 }
 func (m *VConcatNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
 		m.Value = x.VConcat(y)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *VConcatNode) Backward(grad *Matrix) {
@@ -479,11 +533,13 @@ func (m *VConcatNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *VConcatNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *VConcatNode) Tag(name string) Node {
 	m.Name = name
@@ -498,6 +554,7 @@ type RowSliceNode struct {
 	Start, End int
 	Value      *Matrix
 	Name       string
+	valueMutex sync.Mutex
 }
 
 func RowSlice(x Node, start, end int) *RowSliceNode {
@@ -509,10 +566,12 @@ func RowSlice(x Node, start, end int) *RowSliceNode {
 }
 
 func (m *RowSliceNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.RowSlice(m.Start, m.End)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -527,10 +586,12 @@ func (m *RowSliceNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *RowSliceNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *RowSliceNode) Tag(name string) Node {
 	m.Name = name
@@ -545,6 +606,7 @@ type ColSliceNode struct {
 	Start, End int
 	Value      *Matrix
 	Name       string
+	valueMutex sync.Mutex
 }
 
 func ColSlice(x Node, start, end int) *ColSliceNode {
@@ -555,10 +617,12 @@ func ColSlice(x Node, start, end int) *ColSliceNode {
 	}
 }
 func (m *ColSliceNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.ColSlice(m.Start, m.End)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ColSliceNode) Backward(grad *Matrix) {
@@ -572,10 +636,12 @@ func (m *ColSliceNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *ColSliceNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ColSliceNode) Tag(name string) Node {
 	m.Name = name
@@ -583,9 +649,10 @@ func (m *ColSliceNode) Tag(name string) Node {
 }
 
 type RowSumNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func RowSum(x Node) *RowSumNode {
@@ -595,10 +662,12 @@ func RowSum(x Node) *RowSumNode {
 	}
 }
 func (m *RowSumNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.RowSum()
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *RowSumNode) Backward(grad *Matrix) {
@@ -613,10 +682,12 @@ func (m *RowSumNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *RowSumNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *RowSumNode) Tag(name string) Node {
 	m.Name = name
@@ -624,9 +695,10 @@ func (m *RowSumNode) Tag(name string) Node {
 }
 
 type ColSumNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func ColSum(x Node) *ColSumNode {
@@ -636,10 +708,12 @@ func ColSum(x Node) *ColSumNode {
 	}
 }
 func (m *ColSumNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.ColSum()
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ColSumNode) Backward(grad *Matrix) {
@@ -654,10 +728,12 @@ func (m *ColSumNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *ColSumNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ColSumNode) Tag(name string) Node {
 	m.Name = name
@@ -665,10 +741,11 @@ func (m *ColSumNode) Tag(name string) Node {
 }
 
 type ScaleNode struct {
-	X     Node
-	Rate  float64
-	Value *Matrix
-	Name  string
+	X          Node
+	Rate       float64
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Scale(x Node, rate float64) *ScaleNode {
@@ -679,10 +756,12 @@ func Scale(x Node, rate float64) *ScaleNode {
 	}
 }
 func (m *ScaleNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		m.Value = x.Scale(m.Rate)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ScaleNode) Backward(grad *Matrix) {
@@ -690,10 +769,12 @@ func (m *ScaleNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *ScaleNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ScaleNode) Tag(name string) Node {
 	m.Name = name
@@ -701,11 +782,12 @@ func (m *ScaleNode) Tag(name string) Node {
 }
 
 type ValueThresholdNode struct {
-	X        Node
-	Value    *Matrix
-	MinValue float64
-	MaxValue float64
-	Name     string
+	X          Node
+	Value      *Matrix
+	MinValue   float64
+	MaxValue   float64
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func ValueThreshold(x Node, minVal, maxVal float64) *ValueThresholdNode {
@@ -717,6 +799,7 @@ func ValueThreshold(x Node, minVal, maxVal float64) *ValueThresholdNode {
 	}
 }
 func (m *ValueThresholdNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -725,6 +808,7 @@ func (m *ValueThresholdNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ValueThresholdNode) Backward(grad *Matrix) {
@@ -740,10 +824,12 @@ func (m *ValueThresholdNode) Backward(grad *Matrix) {
 	m.X.Backward(gradX)
 }
 func (m *ValueThresholdNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ValueThresholdNode) Tag(name string) Node {
 	m.Name = name
@@ -754,9 +840,10 @@ func (m *ValueThresholdNode) Tag(name string) Node {
 SigmoidNode defines a node that executes Sigmoid activation function.
 */
 type SigmoidNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Sigmoid(x Node) *SigmoidNode {
@@ -765,6 +852,7 @@ func Sigmoid(x Node) *SigmoidNode {
 	}
 }
 func (m *SigmoidNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -773,6 +861,7 @@ func (m *SigmoidNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *SigmoidNode) Backward(grad *Matrix) {
@@ -783,10 +872,12 @@ func (m *SigmoidNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *SigmoidNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *SigmoidNode) Tag(name string) Node {
 	m.Name = name
@@ -797,9 +888,10 @@ func (m *SigmoidNode) Tag(name string) Node {
 ReLuNode defines a node that executes ReLu activation function.
 */
 type ReLuNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func ReLu(x Node) *ReLuNode {
@@ -809,6 +901,7 @@ func ReLu(x Node) *ReLuNode {
 }
 
 func (m *ReLuNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -821,6 +914,7 @@ func (m *ReLuNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ReLuNode) Backward(grad *Matrix) {
@@ -836,10 +930,12 @@ func (m *ReLuNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *ReLuNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ReLuNode) Tag(name string) Node {
 	m.Name = name
@@ -850,9 +946,10 @@ func (m *ReLuNode) Tag(name string) Node {
 TanhNode defines a node that executes Tanh activation function.
 */
 type TanhNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Tanh(x Node) *TanhNode {
@@ -861,6 +958,7 @@ func Tanh(x Node) *TanhNode {
 	}
 }
 func (m *TanhNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -872,6 +970,7 @@ func (m *TanhNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -883,10 +982,12 @@ func (m *TanhNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *TanhNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *TanhNode) Tag(name string) Node {
 	m.Name = name
@@ -897,10 +998,11 @@ func (m *TanhNode) Tag(name string) Node {
 DropoutNode defines a node that performs Dropout operations.
 */
 type DropoutNode struct {
-	X     Node
-	P     float64 //Keep probability
-	Value *Matrix
-	Name  string
+	X          Node
+	P          float64 //Keep probability
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Dropout(x Node, p float64) *DropoutNode {
@@ -910,6 +1012,7 @@ func Dropout(x Node, p float64) *DropoutNode {
 	}
 }
 func (m *DropoutNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -922,6 +1025,7 @@ func (m *DropoutNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *DropoutNode) Backward(grad *Matrix) {
@@ -936,10 +1040,12 @@ func (m *DropoutNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *DropoutNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *DropoutNode) Tag(name string) Node {
 	m.Name = name
@@ -950,9 +1056,10 @@ func (m *DropoutNode) Tag(name string) Node {
 SoftmaxNode defines a node that executes the Softmax activation function
 */
 type SoftmaxNode struct {
-	X     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Softmax(x Node) *SoftmaxNode {
@@ -961,6 +1068,7 @@ func Softmax(x Node) *SoftmaxNode {
 	}
 }
 func (m *SoftmaxNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		data := make([]float64, x.Rows*x.Cols)
@@ -986,6 +1094,7 @@ func (m *SoftmaxNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *SoftmaxNode) Backward(grad *Matrix) {
@@ -996,10 +1105,12 @@ func (m *SoftmaxNode) Backward(grad *Matrix) {
 	m.X.Backward(myGrad)
 }
 func (m *SoftmaxNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *SoftmaxNode) Tag(name string) Node {
 	m.Name = name
@@ -1010,10 +1121,11 @@ func (m *SoftmaxNode) Tag(name string) Node {
 MSELossNode defines a node for calculating mean square error loss.
 */
 type MSELossNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func MSELoss(x Node, y Node) *MSELossNode {
@@ -1024,6 +1136,7 @@ func MSELoss(x Node, y Node) *MSELossNode {
 }
 
 func (m *MSELossNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
@@ -1041,6 +1154,7 @@ func (m *MSELossNode) Forward() *Matrix {
 		data[0] /= float64(x.Rows)
 		m.Value = NewMatrix(1, 1, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 
@@ -1061,11 +1175,13 @@ func (m *MSELossNode) Backward(grad *Matrix) {
 }
 
 func (m *MSELossNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *MSELossNode) Tag(name string) Node {
 	m.Name = name
@@ -1078,10 +1194,11 @@ loss. It should be used in conjunction with the SoftmaxNode, meaning that the
 preceding node of this one should be a SoftmaxNode.
 */
 type CrossEntropyLossNode struct {
-	X     Node
-	Y     Node
-	Value *Matrix
-	Name  string
+	X          Node
+	Y          Node
+	Value      *Matrix
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func CrossEntropyLoss(x Node, y Node) *CrossEntropyLossNode {
@@ -1091,6 +1208,7 @@ func CrossEntropyLoss(x Node, y Node) *CrossEntropyLossNode {
 	}
 }
 func (m *CrossEntropyLossNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		y := m.Y.Forward()
@@ -1103,6 +1221,7 @@ func (m *CrossEntropyLossNode) Forward() *Matrix {
 		data[0] /= float64(x.Rows)
 		m.Value = NewMatrix(1, 1, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
@@ -1133,11 +1252,13 @@ func (m *CrossEntropyLossNode) Backward(grad *Matrix) {
 	m.Y.Backward(gradY)
 }
 func (m *CrossEntropyLossNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 		m.Y.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *CrossEntropyLossNode) Tag(name string) Node {
 	m.Name = name
@@ -1152,10 +1273,11 @@ Threshold. When the module of the gradient is less than the Threshold,
 backpropagation will stop.
 */
 type GradThresholdNode struct {
-	X         Node
-	Value     *Matrix
-	Threshold float64
-	Name      string
+	X          Node
+	Value      *Matrix
+	Threshold  float64
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func GradThreshold(x Node, threshold float64) *GradThresholdNode {
@@ -1166,9 +1288,11 @@ func GradThreshold(x Node, threshold float64) *GradThresholdNode {
 	}
 }
 func (m *GradThresholdNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		m.Value = m.X.Forward()
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *GradThresholdNode) Backward(grad *Matrix) {
@@ -1182,10 +1306,12 @@ func (m *GradThresholdNode) Backward(grad *Matrix) {
 	}
 }
 func (m *GradThresholdNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *GradThresholdNode) Tag(name string) Node {
 	m.Name = name
@@ -1193,13 +1319,14 @@ func (m *GradThresholdNode) Tag(name string) Node {
 }
 
 type PoolNode struct {
-	X      Node
-	Width  int
-	Height int
-	Stride int
-	Value  *Matrix
-	Flags  []int
-	Name   string
+	X          Node
+	Width      int
+	Height     int
+	Stride     int
+	Value      *Matrix
+	Flags      []int
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Pool(x Node, width, height, stride int) *PoolNode {
@@ -1213,6 +1340,7 @@ func Pool(x Node, width, height, stride int) *PoolNode {
 	}
 }
 func (m *PoolNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		var xPadding, xSteps, yPadding, ySteps int
@@ -1260,6 +1388,7 @@ func (m *PoolNode) Forward() *Matrix {
 		}
 		m.Value = NewMatrix(ySteps, xSteps, data)
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *PoolNode) Backward(grad *Matrix) {
@@ -1271,11 +1400,13 @@ func (m *PoolNode) Backward(grad *Matrix) {
 	m.X.Backward(xGrad)
 }
 func (m *PoolNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.Flags = nil
 		m.X.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *PoolNode) Tag(name string) Node {
 	m.Name = name
@@ -1283,13 +1414,14 @@ func (m *PoolNode) Tag(name string) Node {
 }
 
 type ConvNode struct {
-	X        Node
-	Kernel   Node
-	Stride   int
-	Value    *Matrix
-	XPadding int
-	YPadding int
-	Name     string
+	X          Node
+	Kernel     Node
+	Stride     int
+	Value      *Matrix
+	XPadding   int
+	YPadding   int
+	Name       string
+	valueMutex sync.Mutex
 }
 
 func Conv(x Node, kernel Node, stride int) *ConvNode {
@@ -1303,6 +1435,7 @@ func Conv(x Node, kernel Node, stride int) *ConvNode {
 	}
 }
 func (m *ConvNode) Forward() *Matrix {
+	m.valueMutex.Lock()
 	if m.Value == nil {
 		x := m.X.Forward()
 		kernel := m.Kernel.Forward()
@@ -1345,6 +1478,7 @@ func (m *ConvNode) Forward() *Matrix {
 		m.XPadding = xPadding
 		m.YPadding = yPadding
 	}
+	m.valueMutex.Unlock()
 	return m.Value
 }
 func (m *ConvNode) Backward(grad *Matrix) {
@@ -1392,6 +1526,7 @@ func (m *ConvNode) Backward(grad *Matrix) {
 	m.Kernel.Backward(kernelGrad)
 }
 func (m *ConvNode) Reset() {
+	m.valueMutex.Lock()
 	if m.Value != nil {
 		m.Value = nil
 		m.XPadding = 0
@@ -1399,6 +1534,7 @@ func (m *ConvNode) Reset() {
 		m.X.Reset()
 		m.Kernel.Reset()
 	}
+	m.valueMutex.Unlock()
 }
 func (m *ConvNode) Tag(name string) Node {
 	m.Name = name
