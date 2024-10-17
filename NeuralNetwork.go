@@ -25,8 +25,9 @@ func (nn *NeuralNetwork) Train(inputData, targetData [][]float64, batchSize int)
 			go func(batch, idx, batchSize int) {
 				inputs[idx].Value = NewMatrix(inputs[idx].Value.Rows, inputs[idx].Value.Cols, inputData[batch*batchSize+idx])
 				targets[idx].Value = NewMatrix(targets[idx].Value.Rows, targets[idx].Value.Cols, targetData[batch*batchSize+idx])
+				lossValueItem := losses[idx].Forward().Data[0]
 				mu.Lock()
-				lossValue += losses[idx].Forward().Data[0]
+				lossValue += lossValueItem
 				mu.Unlock()
 				losses[idx].Backward(nil)
 				wg.Done()
