@@ -14,6 +14,10 @@ import (
 	"strings"
 )
 
+const (
+	ImageSize = 448
+)
+
 type RectMask struct {
 	image.Rectangle
 }
@@ -31,16 +35,16 @@ func main() {
 }
 
 func showResult(input []float64, result []float64) {
-	img := image.NewRGBA(image.Rect(0, 0, 640, 640))
-	for x := range 640 {
-		for y := range 640 {
-			r, g, b, a := input[(y*640+x)*4], input[(y*640+x)*4+1], input[(y*640+x)*4+2], input[(y*640+x)*4+3]
+	img := image.NewRGBA(image.Rect(0, 0, ImageSize, ImageSize))
+	for x := range ImageSize {
+		for y := range ImageSize {
+			r, g, b, a := input[(y*ImageSize+x)*4], input[(y*ImageSize+x)*4+1], input[(y*ImageSize+x)*4+2], input[(y*ImageSize+x)*4+3]
 			img.Set(x, y, color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(a)})
 		}
 	}
 	uniformImg := image.NewUniform(color.RGBA{R: 255, A: 255})
 	for i := range len(result) / 5 {
-		x0, y0, x1, y1 := result[i*5+1]*640-result[i*5+3]*640/2, result[i*5+2]*640-result[i*5+4]*640/2, result[i*5+1]*640+result[i*5+3]*640/2, result[i*5+2]*640+result[i*5+4]*640/2
+		x0, y0, x1, y1 := result[i*5+1]*ImageSize-result[i*5+3]*ImageSize/2, result[i*5+2]*ImageSize-result[i*5+4]*ImageSize/2, result[i*5+1]*ImageSize+result[i*5+3]*ImageSize/2, result[i*5+2]*ImageSize+result[i*5+4]*ImageSize/2
 		rect := &RectMask{image.Rect(int(x0), int(y0), int(x1), int(y1))}
 		draw.DrawMask(img, img.Bounds(), uniformImg, image.Pt(0, 0), rect, image.Pt(0, 0), draw.Over)
 	}
@@ -109,7 +113,7 @@ func readImg(imgPath string) (input []float64) {
 	if err != nil {
 		panic(err)
 	}
-	img = imaging.Resize(img, 640, 640, imaging.NearestNeighbor)
+	img = imaging.Resize(img, ImageSize, ImageSize, imaging.NearestNeighbor)
 	for y := range img.Bounds().Dy() {
 		for x := range img.Bounds().Dx() {
 			pixel := img.At(x, y)

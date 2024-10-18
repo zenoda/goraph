@@ -909,7 +909,7 @@ func (m *ReLuNode) Forward() *Matrix {
 			if v > 0 {
 				data[i] = v
 			} else {
-				data[i] = 0.001
+				data[i] = 0.01
 			}
 		}
 		m.Value = NewMatrix(x.Rows, x.Cols, data)
